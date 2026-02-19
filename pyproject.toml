@@ -5,6 +5,9 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/sync", "src/draft", "src/cloudflare"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"src/audit_docs.py" = "audit_docs.py"
+
 [project]
 name = "correspondence"
 version = "0.1.0"
@@ -28,9 +31,13 @@ dev = ["correspondence[dev]"]
 
 [project.scripts]
 sync-gmail = "sync.gmail:main"
+audit-docs = "audit_docs:main"
 
 [tool.ruff]
 target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
+
+[tool.poe.tasks]
+audit = "uv run audit-docs"

@@ -218,6 +218,29 @@ Instead of pre-syncing to markdown files, Claude can access Gmail live via an MC
 
 Current approach (file sync) is preferred for privacy and offline use. MCP is worth revisiting for real-time workflows.
 
+## Package-Level Instruction Files
+
+Each subpackage (`src/sync/`, `src/draft/`, `src/cloudflare/`) can contain its own `AGENTS.md` with package-specific
+conventions and context. These files are committed to the repo and auto-loaded when an agent works in that directory.
+They also surface when searching dependency code across packages.
+
+Use package-level files for deep-dives on that package's types, patterns, and gotchas. Keep the root `AGENTS.md`
+focused on cross-cutting project concerns.
+
+**Dual-name convention:** `AGENTS.md` is the canonical committed file, readable by Codex and other agents. `CLAUDE.md`
+is a symlink to `AGENTS.md`, readable natively by Claude Code. For personal overrides, use `CLAUDE.local.md` (Claude
+Code) or `AGENTS.local.md` (Codex) — both are gitignored.
+
+**Actionable over informational.** Instruction files should contain the minimum needed to generate correct code: type
+names, import paths, patterns, conventions, constraints. Reference material like module tables, route lists, and
+architecture overviews belongs in `README.md`.
+
+**Update with the code.** When a change affects patterns, conventions, type names, import paths, or module boundaries
+documented in `AGENTS.md` or `README.md`, update those files as part of the same change.
+
+**Stay concise.** All instruction files loaded in a session share the context window. Combined root + package files
+should stay well under 1000 lines to avoid crowding out working context.
+
 ## Conventions
 
 - Use `uv run` for script execution, never bare `python`
