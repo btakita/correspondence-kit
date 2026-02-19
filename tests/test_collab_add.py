@@ -239,9 +239,9 @@ def test_add_exits_if_directory_exists(tmp_path, monkeypatch):
 
 
 def test_collab_add_listed_in_help():
-    """uv run help includes the collab-add command."""
+    """corrkit --help includes the collab-add command."""
     result = subprocess.run(
-        ["uv", "run", "help"],
+        ["uv", "run", "corrkit", "--help"],
         capture_output=True,
         text=True,
     )

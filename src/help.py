@@ -3,14 +3,15 @@
 import sys
 
 COMMANDS = [
-    ("sync-gmail", "Incremental sync of Gmail threads to markdown", "uv run sync-gmail [--full]"),
-    ("push-draft", "Save a draft to Gmail or send it", "uv run push-draft drafts/FILE.md [--send]"),
-    ("collab-add", "Add a collaborator (creates shared repo + submodule)", "uv run collab-add NAME --label LABEL [--github-user USER | --pat] [--public]"),
-    ("collab-sync", "Push/pull shared collaborator submodules", "uv run collab-sync [NAME]"),
-    ("collab-status", "Check for pending changes in shared repos", "uv run collab-status"),
-    ("collab-remove", "Remove a collaborator", "uv run collab-remove NAME [--delete-repo]"),
-    ("audit-docs", "Audit instruction files for staleness", "uv run audit-docs"),
-    ("help", "Show this command reference", "uv run help"),
+    ("sync-auth", "One-time Gmail OAuth setup", "corrkit sync-auth"),
+    ("sync-gmail", "Incremental sync of Gmail threads to markdown", "corrkit sync-gmail [--full]"),
+    ("push-draft", "Save a draft to Gmail or send it", "corrkit push-draft drafts/FILE.md [--send]"),
+    ("collab-add", "Add a collaborator (creates shared repo + submodule)", "corrkit collab-add NAME --label LABEL [--github-user USER | --pat] [--public]"),
+    ("collab-sync", "Push/pull shared collaborator submodules", "corrkit collab-sync [NAME]"),
+    ("collab-status", "Check for pending changes in shared repos", "corrkit collab-status"),
+    ("collab-remove", "Remove a collaborator", "corrkit collab-remove NAME [--delete-repo]"),
+    ("audit-docs", "Audit instruction files for staleness", "corrkit audit-docs"),
+    ("help", "Show this command reference", "corrkit help"),
 ]
 
 DEV_COMMANDS = [

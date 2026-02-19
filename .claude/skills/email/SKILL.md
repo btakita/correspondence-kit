@@ -14,7 +14,7 @@ Manage and draft correspondence using locally synced Gmail threads.
 - `conversations/` — synced email threads as Markdown, organized by label
 - `drafts/` — outgoing email drafts being worked on
 - `uv run .claude/skills/email/find_unanswered.py` — list threads awaiting a reply
-- `uv run src/sync/gmail.py` — re-sync threads from Gmail
+- `corrkit sync-gmail` — re-sync threads from Gmail
 
 ## Workflows
 

@@ -1,0 +1,62 @@
+"""Unified CLI dispatcher for correspondence-kit.
+
+Usage:
+    corrkit <subcommand> [args...]
+    corrkit --help
+"""
+
+import importlib
+import sys
+
+SUBCOMMANDS: dict[str, tuple[str, str]] = {
+    "sync-auth": ("sync.auth", "main"),
+    "sync-gmail": ("sync.gmail", "main"),
+    "push-draft": ("draft.push", "main"),
+    "collab-add": ("collab.add", "main"),
+    "collab-sync": ("collab.sync", "main"),
+    "collab-status": ("collab.sync", "status"),
+    "collab-remove": ("collab.remove", "main"),
+    "audit-docs": ("audit_docs", "main"),
+    "help": ("help", "main"),
+}
+
+
+def main() -> None:
+    args = sys.argv[1:]
+
+    if not args or args[0] in ("--help", "-h"):
+        _show_help()
+        return
+
+    subcmd = args[0]
+
+    if subcmd not in SUBCOMMANDS:
+        print(f"Unknown command: {subcmd}", file=sys.stderr)
+        print(file=sys.stderr)
+        _show_help(file=sys.stderr)
+        sys.exit(1)
+
+    module_path, func_name = SUBCOMMANDS[subcmd]
+
+    # Rewrite sys.argv so the subcommand's argparse sees the right program name
+    sys.argv = [subcmd, *args[1:]]
+
+    mod = importlib.import_module(module_path)
+    fn = getattr(mod, func_name)
+    fn()
+
+
+def _show_help(file=None) -> None:
+    if file is None:
+        file = sys.stdout
+    import help as help_mod
+
+    if file is sys.stdout:
+        # Reset sys.argv so help:main doesn't see --help as a filter
+        sys.argv = ["help"]
+        help_mod.main()
+    else:
+        # For stderr, reuse the help module's data directly
+        print("correspondence-kit commands\n", file=file)
+        for name, desc, usage in help_mod.COMMANDS:
+            print(f"  {name}  {desc}  {usage}", file=file)

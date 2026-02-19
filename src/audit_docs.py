@@ -30,7 +30,7 @@ def _find_root() -> Path:
 ROOT = _find_root()
 LINE_BUDGET = 1000
 SKIP_PATHS = {".env"}  # Gitignored files expected to be absent
-TOOL_COMMANDS = {"ruff", "ty"}  # External tools invoked via uv run
+TOOL_COMMANDS = {"ruff", "ty", "pytest", "poe"}  # External tools invoked via uv run
 
 
 class Issue(NamedTuple):

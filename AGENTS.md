@@ -49,8 +49,7 @@ correspondence-kit/
       sync.py                   # collab-sync / collab-status commands
       remove.py                 # collab-remove command
     cloudflare/
-      __init__.py
-      push.py                   # Push intelligence to Cloudflare D1/KV
+      __init__.py               # Push intelligence to Cloudflare D1/KV (planned)
   conversations/                # Synced threads (gitignored — private)
     [label]/
       [YYYY-MM-DD]-[subject].md
@@ -107,36 +106,37 @@ CLOUDFLARE_D1_DATABASE_ID=
 4. Download the credentials JSON and extract `client_id` and `client_secret` into `.env`
 5. Run the auth flow once to obtain a refresh token:
    ```sh
-   uv run sync-auth
+   corrkit sync-auth
    ```
 
 ## Commands
 
 ```sh
 uv sync                                         # Install dependencies
-uv run sync-auth                                # One-time Gmail OAuth setup
-uv run sync-gmail                               # Incremental sync (only new messages)
-uv run sync-gmail --full                        # Full re-sync (ignores saved state)
-uv run .claude/skills/email/find_unanswered.py  # List threads needing a reply
-uv run push-draft drafts/FILE.md                # Save draft to Gmail
-uv run push-draft drafts/FILE.md --send         # Send email
+corrkit sync-auth                               # One-time Gmail OAuth setup
+corrkit sync-gmail                              # Incremental sync (only new messages)
+corrkit sync-gmail --full                       # Full re-sync (ignores saved state)
+corrkit push-draft drafts/FILE.md               # Save draft to Gmail
+corrkit push-draft drafts/FILE.md --send        # Send email
+corrkit collab-add NAME --label LABEL [--github-user USER | --pat] [--public]
+corrkit collab-sync [NAME]                      # Push/pull shared submodules
+corrkit collab-status                           # Quick check for pending changes
+corrkit collab-remove NAME [--delete-repo]
+corrkit audit-docs                              # Audit instruction files for staleness
+corrkit help                                    # Show command reference
+
+# Dev tools
 uv run pytest                                    # Run tests
 uv run ruff check .                             # Lint
 uv run ruff format .                            # Format
 uv run ty check                                 # Type check
-
-# Collaborator management
-uv run collab-add NAME --label LABEL [--github-user USER | --pat] [--public]
-uv run collab-sync [NAME]                       # Push/pull shared submodules
-uv run collab-status                            # Quick check for pending changes
-uv run collab-remove NAME [--delete-repo]
 ```
 
 ## Workflows
 
 ### Daily email review
 
-1. Run `uv run src/sync/gmail.py` to pull latest threads
+1. Run `corrkit sync-gmail` to pull latest threads
 2. Ask Claude: *"Review conversations/ and identify threads that need a response, ordered by priority"*
 3. For each thread, ask Claude to draft a reply matching the voice guidelines above
 4. Review and edit the draft in `drafts/`
