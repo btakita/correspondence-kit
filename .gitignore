@@ -1,0 +1,11 @@
+.env
+AGENTS.local.md
+CLAUDE.local.md
+conversations/
+*.credentials.json
+credentials.json
+.venv/
+__pycache__/
+
+.idea/
+tmp/
