@@ -102,7 +102,8 @@ CLOUDFLARE_D1_DATABASE_ID=
 ```sh
 uv sync                                         # Install dependencies
 uv run sync-auth                                # One-time Gmail OAuth setup
-uv run sync-gmail                               # Sync labeled Gmail threads to conversations/
+uv run sync-gmail                               # Incremental sync (only new messages)
+uv run sync-gmail --full                        # Full re-sync (ignores saved state)
 uv run .claude/skills/email/find_unanswered.py  # List threads needing a reply
 uv run src/cloudflare/push.py                   # Push intelligence to Cloudflare D1/KV
 uv run ruff check .                             # Lint
@@ -134,11 +135,17 @@ Ask Claude: *"Draft an email to [person] about [topic]"* — point it at any rel
 
 ## Gmail Sync Behavior
 
+- **Incremental by default**: Tracks IMAP UIDs in `.sync-state.json` (gitignored). Only new messages since
+  last sync are fetched. Use `--full` to ignore saved state and re-fetch everything.
+- **Streaming writes**: Each message is merged into its thread file immediately after fetch — no batching.
+  If sync crashes mid-run, state is not saved; next run re-fetches from last good state.
+- **UIDVALIDITY**: If the IMAP server resets UIDVALIDITY for a folder, that label automatically does a full resync.
 - Threads are fetched for each label listed in `GMAIL_SYNC_LABELS`
 - Threads are written to `conversations/[label]/[YYYY-MM-DD]-[slug].md`
   - Date is derived from the most recent message in the thread
   - Slug is derived from the subject line
-- Existing files are overwritten on re-sync (idempotent)
+  - Existing thread files are matched by `**Thread ID**` metadata, not filename
+- New messages are deduplicated by `(sender, date)` tuple when merging into existing files
 - Attachments are noted inline but not downloaded
 
 ## Cloudflare Architecture
@@ -268,6 +275,7 @@ CLAUDE.local.md
 AGENTS.local.md
 conversations/
 *.credentials.json
+.sync-state.json
 .venv/
 __pycache__/
 ```
