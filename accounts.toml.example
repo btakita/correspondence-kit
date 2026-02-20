@@ -23,3 +23,7 @@ default = true
 # user = "user@example.com"
 # password_cmd = "pass email/selfhosted"
 # labels = ["important"]
+
+# [watch]
+# poll_interval = 300                       # seconds between polls (default: 300)
+# notify = true                             # desktop alerts on new messages (default: false)

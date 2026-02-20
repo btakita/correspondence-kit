@@ -29,6 +29,14 @@ PROVIDER_PRESETS: dict[str, dict[str, object]] = {
 }
 
 
+_NON_ACCOUNT_KEYS = frozenset({"watch"})
+
+
+class WatchConfig(msgspec.Struct):
+    poll_interval: int = 300
+    notify: bool = False
+
+
 class Account(msgspec.Struct):
     provider: str = "imap"
     user: str = ""
@@ -88,6 +96,8 @@ def load_accounts(path: Path | None = None) -> dict[str, Account]:
     accounts_section = raw.get("accounts", raw)
     result: dict[str, Account] = {}
     for name, data in accounts_section.items():
+        if name in _NON_ACCOUNT_KEYS:
+            continue
         account = msgspec.convert(data, Account)
         account = _apply_preset(account)
         result[name] = account
@@ -106,9 +116,7 @@ def _legacy_account_from_env() -> Account:
     sync_days = int(os.environ.get("GMAIL_SYNC_DAYS", "3650"))
 
     if not user:
-        raise SystemExit(
-            "No accounts.toml found and GMAIL_USER_EMAIL not set in .env"
-        )
+        raise SystemExit("No accounts.toml found and GMAIL_USER_EMAIL not set in .env")
 
     return Account(
         provider="gmail",
@@ -152,3 +160,17 @@ def get_account_for_email(
         if acct.user.lower() == email_lower:
             return name, acct
     return None
+
+
+def load_watch_config(path: Path | None = None) -> WatchConfig:
+    """Load [watch] section from accounts.toml. Returns defaults if missing."""
+    if path is None:
+        path = CONFIG_PATH
+    if not path.exists():
+        return WatchConfig()
+    with open(path, "rb") as f:
+        raw = tomllib.load(f)
+    watch_data = raw.get("watch")
+    if watch_data is None:
+        return WatchConfig()
+    return msgspec.convert(watch_data, WatchConfig)

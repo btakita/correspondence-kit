@@ -56,6 +56,10 @@ correspondence-kit/
       validate_draft.py         # validate-draft command
     cloudflare/
       __init__.py               # Push intelligence to Cloudflare D1/KV (planned)
+    watch.py                    # IMAP polling daemon (corrkit watch)
+  services/
+    corrkit-watch.service       # systemd user unit template
+    com.corrkit.watch.plist     # launchd agent template
   correspondence -> ~/work/btakita/correspondence  # Symlink to personal data repo
     conversations/              # Synced threads
       [account]/                # Account-scoped (omitted for _legacy)
@@ -157,6 +161,8 @@ corrkit collab-remove NAME [--delete-repo]
 corrkit collab-reset [NAME] [--no-sync]          # Pull, regenerate templates, commit & push
 corrkit find-unanswered [--from NAME]                           # Find threads awaiting a reply
 corrkit validate-draft FILE [FILE...]                           # Validate draft markdown files
+corrkit watch                                   # Poll IMAP and sync on an interval
+corrkit watch --interval 60                     # Override poll interval (seconds)
 corrkit audit-docs                              # Audit instruction files for staleness
 corrkit help                                    # Show command reference
 

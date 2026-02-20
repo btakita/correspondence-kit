@@ -21,6 +21,7 @@ SUBCOMMANDS: dict[str, tuple[str, str]] = {
     "collab-reset": ("collab.reset", "main"),
     "find-unanswered": ("collab.find_unanswered", "main"),
     "validate-draft": ("collab.validate_draft", "main"),
+    "watch": ("watch", "main"),
     "audit-docs": ("audit_docs", "main"),
     "help": ("help", "main"),
 }

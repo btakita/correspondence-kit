@@ -10,10 +10,11 @@ packages = ["src/sync", "src/draft", "src/cloudflare", "src/collab"]
 "src/help.py" = "help.py"
 "src/corrkit.py" = "corrkit.py"
 "src/accounts.py" = "accounts.py"
+"src/watch.py" = "watch.py"
 
 [project]
 name = "corrkit"
-version = "0.2.1"
+version = "0.3.0"
 description = "Sync email threads from IMAP to Markdown, draft replies, push routing intelligence to Cloudflare"
 readme = "README.md"
 license = "Apache-2.0"
@@ -55,6 +56,7 @@ collab-remove = "collab.remove:main"
 collab-reset = "collab.reset:main"
 find-unanswered = "collab.find_unanswered:main"
 validate-draft = "collab.validate_draft:main"
+watch = "watch:main"
 help = "help:main"
 
 [tool.ruff]

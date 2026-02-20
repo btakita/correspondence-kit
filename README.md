@@ -74,6 +74,8 @@ corrkit collab-remove NAME        # Remove a collaborator
 corrkit collab-reset [NAME]      # Pull, regenerate templates, commit & push
 corrkit find-unanswered           # Find threads awaiting a reply
 corrkit validate-draft FILE       # Validate draft markdown files
+corrkit watch                     # Poll IMAP and sync on an interval
+corrkit watch --interval 60      # Override poll interval (seconds)
 corrkit audit-docs                # Audit instruction files for staleness
 corrkit help                      # Show command reference
 ```
@@ -142,6 +144,44 @@ corrkit collab-status
 
 # 4. Review a collaborator's draft and push it as an email draft
 corrkit push-draft shared/alex/drafts/2026-02-19-reply.md
+```
+
+### Unattended sync with `corrkit watch`
+
+Run as a daemon to poll IMAP, sync threads, and push to shared repos automatically:
+
+```sh
+# Interactive — polls every 5 minutes (default), Ctrl-C to stop
+corrkit watch
+
+# Custom interval
+corrkit watch --interval 60
+```
+
+Configure in `accounts.toml`:
+
+```toml
+[watch]
+poll_interval = 300    # seconds between polls (default: 300)
+notify = true          # desktop alerts on new messages (default: false)
+```
+
+#### Running as a system service
+
+**Linux (systemd):**
+```sh
+cp services/corrkit-watch.service ~/.config/systemd/user/
+# Edit WorkingDirectory in the unit file to match your setup
+systemctl --user enable --now corrkit-watch
+journalctl --user -u corrkit-watch -f   # view logs
+```
+
+**macOS (launchd):**
+```sh
+cp services/com.corrkit.watch.plist ~/Library/LaunchAgents/
+# Edit WorkingDirectory in the plist to match your setup
+launchctl load ~/Library/LaunchAgents/com.corrkit.watch.plist
+tail -f /tmp/corrkit-watch.log          # view logs
 ```
 
 ### What collaborators can do

@@ -18,6 +18,7 @@ COMMANDS = [
     ("collab-reset [NAME] [--no-sync]", "Pull, regenerate templates, commit & push"),
     ("find-unanswered [--from NAME]", "Find threads awaiting a reply"),
     ("validate-draft FILE [FILE...]", "Validate draft markdown files"),
+    ("watch [--interval N]", "Poll IMAP and sync on an interval"),
     ("audit-docs", "Audit instruction files"),
     ("help", "Show this reference"),
 ]
@@ -35,11 +36,7 @@ def main() -> None:
     filter_arg = sys.argv[1] if len(sys.argv) > 1 else None
 
     if filter_arg and filter_arg not in ("--dev",):
-        matches = [
-            (n, d)
-            for n, d in COMMANDS + DEV_COMMANDS
-            if filter_arg in n
-        ]
+        matches = [(n, d) for n, d in COMMANDS + DEV_COMMANDS if filter_arg in n]
         if matches:
             _print_table(matches)
         else:
