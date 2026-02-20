@@ -1,12 +1,12 @@
 # Correspondence Kit
 
-A personal workspace for drafting emails and syncing conversation threads from any IMAP provider (Gmail, Protonmail Bridge, self-hosted).
+A personal workspace for syncing conversations from multiple sources into a single flat directory of Markdown files, drafting replies with AI assistance, and pushing routing intelligence to Cloudflare.
 
 ## Purpose
 
-- Sync email threads from any IMAP provider by label into local Markdown files
-- Draft and refine outgoing emails with Claude's assistance
-- Maintain a readable, version-controlled record of correspondence
+- Consolidate conversations from multiple email accounts (Gmail, Protonmail, self-hosted IMAP) into one flat directory
+- Draft and refine outgoing messages with Claude's assistance, using per-contact context
+- Maintain a readable, version-controlled record of all correspondence
 - Push distilled intelligence (tags, routing rules, contact metadata) to Cloudflare for email routing
 
 ## Tech Stack
@@ -15,8 +15,8 @@ A personal workspace for drafting emails and syncing conversation threads from a
 - **Linter/formatter**: `ruff`
 - **Type checker**: `ty`
 - **Types/serialization**: `msgspec` (Struct instead of dataclasses)
-- **Storage**: Markdown files (one file per conversation thread)
-- **Email sources**: Any IMAP provider (Gmail, Protonmail Bridge, generic IMAP)
+- **Storage**: Markdown files (one flat directory, one file per conversation thread)
+- **Sources**: Any IMAP provider (Gmail, Protonmail Bridge, generic IMAP); Slack and social media planned
 - **Cloudflare** (routing layer): TypeScript Workers reading from D1/KV populated by Python
 
 ## Project Structure
@@ -219,10 +219,28 @@ Lists all synced threads where the last message is not from you — i.e. threads
 
 Ask Claude: *"Draft an email to [person] about [topic]"* — point it at any relevant thread in `correspondence/conversations/` for context.
 
+## Flat Conversation Directory
+
+All synced threads live in a single flat directory: `correspondence/conversations/`. There are no
+subdirectories for accounts, labels, or sources. This design consolidates correspondence across
+multiple email accounts (and in the future, Slack and social media) into one unified view.
+
+**Why flat?**
+- A conversation with the same person may arrive via Gmail, Protonmail, or both. Flat storage
+  deduplicates naturally — the same thread merges into one file regardless of which account fetched it.
+- Agents and humans browse one directory, not a tree of account/label folders. `ls -t` shows all
+  recent threads sorted by activity.
+- The source metadata (which accounts, which labels) is preserved inside each file and in
+  `manifest.toml`, not encoded in the directory structure.
+- Adding new sources (Slack, social media) doesn't change the directory layout — new messages just
+  merge into the same flat directory with their source tracked in metadata.
+
+**manifest.toml** is generated after each sync. It indexes every thread by subject, labels, accounts,
+contacts, and last-updated date. Agents read the manifest for discovery, then read individual files
+for content — no recursive scanning needed.
+
 ## Sync Behavior
 
-- **Flat conversations directory**: All threads go to `correspondence/conversations/` as `[slug].md`.
-  No account or label subdirectories — labels and accounts are metadata inside each file.
 - **Immutable filenames**: Slug is derived from the subject on first write and never changes.
   Thread identity is tracked by `**Thread ID**` metadata inside the file.
 - **File mtime**: Set to the last message date via `os.utime()`. `ls -t` sorts by thread activity.
@@ -409,6 +427,8 @@ should stay well under 1000 lines to avoid crowding out working context.
 
 ## Future Work
 
+- **Slack sync**: Pull conversations from Slack channels/DMs into the same flat conversations/ directory
+- **Social media sync**: Pull DMs and threads from social platforms into conversations/
 - **Project setup script**: Interactive `collab-init` or `setup` command that configures accounts.toml
 - **Cloudflare routing**: TypeScript Worker consuming D1/KV data pushed from Python
 - **Local MCP server**: Live email access during Claude sessions without Pipedream
