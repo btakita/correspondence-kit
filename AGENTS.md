@@ -51,6 +51,7 @@ correspondence-kit/
       add.py                    # collab-add command
       sync.py                   # collab-sync / collab-status commands
       remove.py                 # collab-remove command
+      reset.py                  # collab-reset command
       find_unanswered.py        # find-unanswered command
       validate_draft.py         # validate-draft command
     cloudflare/
@@ -153,6 +154,7 @@ corrkit collab-add NAME --label LABEL [--github-user USER | --pat] [--public] [-
 corrkit collab-sync [NAME]                      # Push/pull shared submodules
 corrkit collab-status                           # Quick check for pending changes
 corrkit collab-remove NAME [--delete-repo]
+corrkit collab-reset [NAME]                     # Regenerate template files in shared repos
 corrkit find-unanswered [--from NAME]                           # Find threads awaiting a reply
 corrkit validate-draft FILE [FILE...]                           # Validate draft markdown files
 corrkit audit-docs                              # Audit instruction files for staleness

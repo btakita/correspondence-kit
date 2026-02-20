@@ -36,8 +36,8 @@ def _run(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
     return result
 
 
-def _generate_readme_md() -> str:
-    return """# Shared Correspondence with Brian
+def _generate_readme_md(name: str) -> str:
+    return f"""# Shared Correspondence with Brian
 
 This repo contains email threads Brian has shared with you and a place for you
 to draft replies on his behalf.
@@ -46,7 +46,7 @@ to draft replies on his behalf.
 
 ```sh
 git clone <this-repo-url>
-cd correspondence-shared-alex
+cd correspondence-shared-{name}
 ```
 
 ### 1. Read conversations
@@ -72,7 +72,7 @@ Create a file in `drafts/` named `YYYY-MM-DD-slug.md`:
 
 **To**: recipient@example.com
 **Status**: review
-**Author**: alex
+**Author**: {name}
 
 ---
 
@@ -292,7 +292,7 @@ def main() -> None:
         # AGENTS.md + CLAUDE.md symlink + README.md
         (tmp / "AGENTS.md").write_text(_generate_agents_md(name), encoding="utf-8")
         os.symlink("AGENTS.md", tmp / "CLAUDE.md")
-        (tmp / "README.md").write_text(_generate_readme_md(), encoding="utf-8")
+        (tmp / "README.md").write_text(_generate_readme_md(name), encoding="utf-8")
 
         # .gitignore
         (tmp / ".gitignore").write_text(

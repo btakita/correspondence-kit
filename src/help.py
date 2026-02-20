@@ -15,6 +15,7 @@ COMMANDS = [
     ("collab-sync [NAME]", "Push/pull shared submodules"),
     ("collab-status", "Check for pending changes"),
     ("collab-remove NAME [--delete-repo]", "Remove a collaborator"),
+    ("collab-reset [NAME]", "Regenerate template files in shared repos"),
     ("find-unanswered [--from NAME]", "Find threads awaiting a reply"),
     ("validate-draft FILE [FILE...]", "Validate draft markdown files"),
     ("audit-docs", "Audit instruction files"),

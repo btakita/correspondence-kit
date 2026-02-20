@@ -1,11 +1,13 @@
 """End-to-end tests for the collaborator workflow (sync routing, draft round-trip,
 corrkit commands, collab-sync)."""
 
+import os
+import shutil
 import subprocess
 from pathlib import Path
 
 from collab import Collaborator, save_collaborators
-from collab.add import _generate_agents_md
+from collab.add import _generate_agents_md, _generate_readme_md
 from draft.push import parse_draft
 from sync.imap import _build_label_routes, _merge_message_to_file
 from sync.types import Message
@@ -19,17 +21,17 @@ def test_sync_routes_to_shared_dir(tmp_path, monkeypatch):
     """Messages for a collaborator label land in shared/{name}/conversations/."""
     config = tmp_path / "collaborators.toml"
     save_collaborators(
-        {"alex": Collaborator(labels=["for-alex"], repo="o/shared-alex")},
+        {"drafter": Collaborator(labels=["for-drafter"], repo="o/shared-drafter")},
         config,
     )
     monkeypatch.setattr("collab.CONFIG_PATH", config)
 
     routes = _build_label_routes()
-    assert "for-alex" in routes
-    assert routes["for-alex"] == Path("shared/alex/conversations/for-alex")
+    assert "for-drafter" in routes
+    assert routes["for-drafter"] == Path("shared/drafter/conversations/for-drafter")
 
     # Simulate merge to the routed directory
-    out_dir = tmp_path / routes["for-alex"]
+    out_dir = tmp_path / routes["for-drafter"]
     msg = Message(
         id="1",
         thread_id="hello",
@@ -38,7 +40,7 @@ def test_sync_routes_to_shared_dir(tmp_path, monkeypatch):
         subject="Hello Alex",
         body="Hi there.",
     )
-    _merge_message_to_file(out_dir, "for-alex", msg, "hello")
+    _merge_message_to_file(out_dir, "for-drafter", msg, "hello")
 
     files = list(out_dir.glob("*.md"))
     assert len(files) == 1
@@ -56,7 +58,7 @@ def test_collab_sync_stages_and_commits(tmp_path, monkeypatch, capsys):
     """_sync_one stages, commits, and pushes changes in shared/{name}/."""
     from collab.sync import _sync_one
 
-    shared = tmp_path / "shared" / "alex"
+    shared = tmp_path / "shared" / "drafter"
     shared.mkdir(parents=True)
     (shared / "voice.md").write_text("# Voice\n", encoding="utf-8")
 
@@ -85,7 +87,7 @@ def test_collab_sync_stages_and_commits(tmp_path, monkeypatch, capsys):
 
     monkeypatch.setattr("collab.sync.subprocess.run", fake_run)
 
-    _sync_one("alex")
+    _sync_one("drafter")
 
     cmd_strs = [" ".join(c) for c in cmds_run]
     assert any("add -A" in s for s in cmd_strs)
@@ -97,13 +99,13 @@ def test_collab_sync_stages_and_commits(tmp_path, monkeypatch, capsys):
 # 3. Draft round-trip: create draft, parse it
 # ---------------------------------------------------------------------------
 
-ALEX_DRAFT = """\
+DRAFTER_DRAFT = """\
 # Re: Project Update
 
 **To**: bob@example.com
 **CC**: carol@example.com
 **Status**: review
-**Author**: alex
+**Author**: drafter
 **In-Reply-To**: <msg-456@mail.example.com>
 
 ---
@@ -114,10 +116,10 @@ Thanks for the update. Here are my thoughts on the next steps.
 
 def test_draft_round_trip(tmp_path):
     """A draft in shared/{name}/drafts/ parses correctly via parse_draft."""
-    draft_dir = tmp_path / "shared" / "alex" / "drafts"
+    draft_dir = tmp_path / "shared" / "drafter" / "drafts"
     draft_dir.mkdir(parents=True)
     draft_path = draft_dir / "2026-02-19-project-update.md"
-    draft_path.write_text(ALEX_DRAFT, encoding="utf-8")
+    draft_path.write_text(DRAFTER_DRAFT, encoding="utf-8")
 
     meta, subject, body = parse_draft(draft_path)
 
@@ -125,7 +127,7 @@ def test_draft_round_trip(tmp_path):
     assert meta["To"] == "bob@example.com"
     assert meta["CC"] == "carol@example.com"
     assert meta["Status"] == "review"
-    assert meta["Author"] == "alex"
+    assert meta["Author"] == "drafter"
     assert meta["In-Reply-To"] == "<msg-456@mail.example.com>"
     assert "next steps" in body
 
@@ -137,7 +139,7 @@ def test_draft_with_account_field(tmp_path):
         "# Test\n\n"
         "**To**: a@b.com\n"
         "**Status**: review\n"
-        "**Author**: alex\n"
+        "**Author**: drafter\n"
         "**Account**: personal\n\n"
         "---\n\n"
         "Body\n",
@@ -156,7 +158,7 @@ def test_draft_with_account_field(tmp_path):
 
 def test_agents_md_template_completeness():
     """Expanded AGENTS.md template includes all required sections."""
-    md = _generate_agents_md("alex")
+    md = _generate_agents_md("drafter")
 
     # Core sections
     assert "## Workflow" in md
@@ -170,7 +172,7 @@ def test_agents_md_template_completeness():
     assert "**To**" in md
     assert "**CC**" in md
     assert "**Status**" in md
-    assert "**Author**: alex" in md
+    assert "**Author**: drafter" in md
     assert "**Account**" in md
     assert "**From**" in md
     assert "**In-Reply-To**" in md
@@ -212,3 +214,97 @@ def test_validate_draft_via_corrkit():
     )
     assert result.returncode == 0
     assert "draft" in result.stdout.lower()
+
+
+# ---------------------------------------------------------------------------
+# 6. collab-add creates correct files
+# ---------------------------------------------------------------------------
+
+TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "src" / "collab" / "templates"
+VOICE_FILE = Path(__file__).resolve().parent.parent / "voice.md"
+
+
+def test_collab_add_creates_correct_files(tmp_path):
+    """collab-add file-creation logic produces all expected files."""
+    name = "helper"
+
+    # Replicate the file-creation logic from collab.add.main()
+    (tmp_path / "AGENTS.md").write_text(_generate_agents_md(name), encoding="utf-8")
+    os.symlink("AGENTS.md", tmp_path / "CLAUDE.md")
+    (tmp_path / "README.md").write_text(_generate_readme_md(name), encoding="utf-8")
+    (tmp_path / ".gitignore").write_text(
+        "AGENTS.local.md\nCLAUDE.local.md\n__pycache__/\n", encoding="utf-8"
+    )
+    if VOICE_FILE.exists():
+        shutil.copy2(VOICE_FILE, tmp_path / "voice.md")
+    (tmp_path / "conversations").mkdir()
+    (tmp_path / "conversations" / ".gitkeep").touch()
+    (tmp_path / "drafts").mkdir()
+    (tmp_path / "drafts" / ".gitkeep").touch()
+    (tmp_path / ".github" / "workflows").mkdir(parents=True)
+    notify_src = TEMPLATES_DIR / "notify.yml"
+    if notify_src.exists():
+        shutil.copy2(notify_src, tmp_path / ".github" / "workflows" / "notify.yml")
+
+    # Verify all expected files exist
+    assert (tmp_path / "AGENTS.md").is_file()
+    assert (tmp_path / "CLAUDE.md").is_symlink()
+    assert (tmp_path / "README.md").is_file()
+    assert (tmp_path / ".gitignore").is_file()
+    assert (tmp_path / "voice.md").is_file()
+    assert (tmp_path / "conversations" / ".gitkeep").is_file()
+    assert (tmp_path / "drafts" / ".gitkeep").is_file()
+    assert (tmp_path / ".github" / "workflows" / "notify.yml").is_file()
+
+    # CLAUDE.md symlink points to AGENTS.md
+    assert os.readlink(tmp_path / "CLAUDE.md") == "AGENTS.md"
+
+    # AGENTS.md contains collaborator name in Author field
+    agents_content = (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
+    assert f"**Author**: {name}" in agents_content
+
+    # README.md contains collaborator name in dir name and Author field
+    readme_content = (tmp_path / "README.md").read_text(encoding="utf-8")
+    assert f"cd correspondence-shared-{name}" in readme_content
+    assert f"**Author**: {name}" in readme_content
+
+    # .gitignore contains expected entries
+    gitignore = (tmp_path / ".gitignore").read_text(encoding="utf-8")
+    assert "AGENTS.local.md" in gitignore
+    assert "CLAUDE.local.md" in gitignore
+    assert "__pycache__/" in gitignore
+
+
+# ---------------------------------------------------------------------------
+# 7. README.md template includes all sections
+# ---------------------------------------------------------------------------
+
+
+def test_readme_md_template_completeness():
+    """Expanded README.md template includes all required sections and content."""
+    md = _generate_readme_md("drafter")
+
+    # Title
+    assert "# Shared Correspondence with Brian" in md
+
+    # Quick start with parameterized dir name
+    assert "## Quick start" in md
+    assert "cd correspondence-shared-drafter" in md
+
+    # All four workflow sections
+    assert "### 1. Read conversations" in md
+    assert "### 2. Find threads that need a reply" in md
+    assert "### 3. Draft a reply" in md
+    assert "### 4. Validate and push" in md
+
+    # Draft template with parameterized Author
+    assert "**Author**: drafter" in md
+    assert "**Status**: review" in md
+
+    # Commands reference uvx corrkit
+    assert "uvx corrkit find-unanswered" in md
+    assert "uvx corrkit validate-draft" in md
+
+    # Reference section pointing to AGENTS.md
+    assert "## Reference" in md
+    assert "AGENTS.md" in md
