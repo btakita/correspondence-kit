@@ -13,7 +13,7 @@ packages = ["src/sync", "src/draft", "src/cloudflare", "src/collab"]
 
 [project]
 name = "corrkit"
-version = "0.1.0"
+version = "0.2.0"
 description = "Sync email threads from IMAP to Markdown, draft replies, push routing intelligence to Cloudflare"
 readme = "README.md"
 license = "Apache-2.0"
