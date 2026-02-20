@@ -1,9 +1,22 @@
-"""Shared fixtures. Sets env vars needed by modules that read them at import time."""
+"""Shared fixtures for correspondence-kit tests."""
 
-import os
+import pytest
 
-# gmail.py and draft/push.py read these at module level, so they must be set
-# before those modules are first imported.
-os.environ.setdefault("GMAIL_USER_EMAIL", "test@example.com")
-os.environ.setdefault("GMAIL_APP_PASSWORD", "test-password")
-os.environ.setdefault("GMAIL_SYNC_LABELS", "correspondence")
+from accounts import Account
+
+
+@pytest.fixture
+def gmail_account() -> Account:
+    """A sample Gmail Account for tests that need one."""
+    return Account(
+        provider="gmail",
+        user="test@example.com",
+        password="test-password",
+        labels=["correspondence"],
+        imap_host="imap.gmail.com",
+        imap_port=993,
+        smtp_host="smtp.gmail.com",
+        smtp_port=465,
+        drafts_folder="[Gmail]/Drafts",
+        default=True,
+    )

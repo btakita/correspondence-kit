@@ -1,13 +1,11 @@
 .env
+accounts.toml
 AGENTS.local.md
 CLAUDE.local.md
-conversations/
-drafts/
+correspondence
 *.credentials.json
 credentials.json
 .venv/
 __pycache__/
-
-.sync-state.json
 .idea/
 tmp/

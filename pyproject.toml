@@ -9,6 +9,7 @@ packages = ["src/sync", "src/draft", "src/cloudflare", "src/collab"]
 "src/audit_docs.py" = "audit_docs.py"
 "src/help.py" = "help.py"
 "src/corrkit.py" = "corrkit.py"
+"src/accounts.py" = "accounts.py"
 
 [project]
 name = "correspondence-kit"
@@ -37,7 +38,8 @@ dev = ["correspondence-kit[dev]"]
 [project.scripts]
 corrkit = "corrkit:main"
 sync-auth = "sync.auth:main"
-sync-gmail = "sync.gmail:main"
+sync = "sync.imap:main"
+sync-gmail = "sync.imap:main"
 push-draft = "draft.push:main"
 audit-docs = "audit_docs:main"
 collab-add = "collab.add:main"

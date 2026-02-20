@@ -12,6 +12,7 @@ def test_help_flag_shows_all_commands():
     )
     assert result.returncode == 0
     for cmd in [
+        "sync",
         "sync-gmail",
         "push-draft",
         "collab-add",

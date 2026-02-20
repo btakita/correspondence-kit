@@ -12,6 +12,7 @@ class Collaborator(msgspec.Struct):
     labels: list[str]
     repo: str
     github_user: str = ""
+    account: str = ""
 
 
 def load_collaborators(path: Path | None = None) -> dict[str, Collaborator]:
@@ -42,5 +43,7 @@ def save_collaborators(
         lines.append(f'repo = "{c.repo}"')
         if c.github_user:
             lines.append(f'github_user = "{c.github_user}"')
+        if c.account:
+            lines.append(f'account = "{c.account}"')
         lines.append("")
     path.write_text("\n".join(lines), encoding="utf-8")

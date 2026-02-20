@@ -1,8 +1,8 @@
-"""Tests for gmail sync: parsing, merge, routing, helpers."""
+"""Tests for IMAP sync: parsing, merge, routing, helpers."""
 
 from pathlib import Path
 
-from sync.gmail import (
+from sync.imap import (
     _build_label_routes,
     _merge_message_to_file,
     date_prefix_from,

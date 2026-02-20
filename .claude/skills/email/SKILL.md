@@ -11,8 +11,8 @@ Manage and draft correspondence using locally synced Gmail threads.
 
 ## Available Tools
 
-- `conversations/` — synced email threads as Markdown, organized by label
-- `drafts/` — outgoing email drafts being worked on
+- `correspondence/conversations/` — synced email threads as Markdown, organized by label
+- `correspondence/drafts/` — outgoing email drafts being worked on
 - `uv run .claude/skills/email/find_unanswered.py` — list threads awaiting a reply
 - `corrkit sync-gmail` — re-sync threads from Gmail
 
@@ -25,15 +25,15 @@ Manage and draft correspondence using locally synced Gmail threads.
 4. Wait for instruction before drafting anything
 
 ### Draft a reply
-1. Read the full thread from `conversations/`
+1. Read the full thread from `correspondence/conversations/`
 2. Identify the key ask or context requiring a response
-3. Draft a reply in `drafts/[YYYY-MM-DD]-[slug].md` matching the voice guidelines
+3. Draft a reply in `correspondence/drafts/[YYYY-MM-DD]-[slug].md` matching the voice guidelines
 4. Present the draft and ask for feedback before finalizing
 5. Iterate until approved — then offer to save as a Gmail draft
 
 ### Draft a new email
 1. Ask for: recipient, topic, any relevant context or linked threads
-2. Draft in `drafts/[YYYY-MM-DD]-[slug].md`
+2. Draft in `correspondence/drafts/[YYYY-MM-DD]-[slug].md`
 3. Iterate until approved
 
 ## Success Criteria

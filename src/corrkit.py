@@ -9,8 +9,9 @@ import importlib
 import sys
 
 SUBCOMMANDS: dict[str, tuple[str, str]] = {
+    "sync": ("sync.imap", "main"),
     "sync-auth": ("sync.auth", "main"),
-    "sync-gmail": ("sync.gmail", "main"),
+    "sync-gmail": ("sync.imap", "main"),  # alias for sync
     "push-draft": ("draft.push", "main"),
     "collab-add": ("collab.add", "main"),
     "collab-sync": ("collab.sync", "main"),
@@ -58,5 +59,5 @@ def _show_help(file=None) -> None:
     else:
         # For stderr, reuse the help module's data directly
         print("correspondence-kit commands\n", file=file)
-        for name, desc, usage in help_mod.COMMANDS:
-            print(f"  {name}  {desc}  {usage}", file=file)
+        for name, desc in help_mod.COMMANDS:
+            print(f"  {name}  {desc}", file=file)

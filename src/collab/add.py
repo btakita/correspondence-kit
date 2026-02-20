@@ -89,6 +89,11 @@ def main() -> None:
         help="Create the shared repo as public (default: private)",
     )
     parser.add_argument(
+        "--account",
+        default="",
+        help="Bind collaborator labels to a specific account name",
+    )
+    parser.add_argument(
         "--org",
         default="btakita",
         help="GitHub org/user for the shared repo (default: btakita)",
@@ -182,6 +187,7 @@ def main() -> None:
         labels=labels,
         repo=repo_full,
         github_user=args.github_user or "",
+        account=args.account,
     )
     save_collaborators(collabs)
     print("Updated collaborators.toml")

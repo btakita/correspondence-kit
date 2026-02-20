@@ -18,9 +18,12 @@ if not USER_EMAIL:
     print("GMAIL_USER_EMAIL not set in .env", file=sys.stderr)
     sys.exit(1)
 
-CONVERSATIONS = Path("conversations")
+CONVERSATIONS = Path("correspondence/conversations")
 if not CONVERSATIONS.exists():
-    print("No conversations/ directory found. Run sync first.", file=sys.stderr)
+    print(
+        "No correspondence/conversations/ directory found. Run sync first.",
+        file=sys.stderr,
+    )
     sys.exit(1)
 
 # Match "## Sender Name <email@example.com> — Date" or "## Name — Date"

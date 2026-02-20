@@ -77,7 +77,8 @@ def test_compose_email_basic(tmp_path):
     p.write_text(BASIC_DRAFT, encoding="utf-8")
     meta, subject, body = parse_draft(p)
 
-    msg = compose_email(meta, subject, body)
+    msg = compose_email(meta, subject, body, from_addr="test@example.com")
+    assert msg["From"] == "test@example.com"
     assert msg["To"] == "alice@example.com"
     assert msg["Subject"] == "Test Subject"
     assert "Hello, this is the body." in msg.get_content()
@@ -88,7 +89,7 @@ def test_compose_email_with_reply_headers(tmp_path):
     p.write_text(REVIEW_DRAFT, encoding="utf-8")
     meta, subject, body = parse_draft(p)
 
-    msg = compose_email(meta, subject, body)
+    msg = compose_email(meta, subject, body, from_addr="test@example.com")
     assert msg["CC"] == "carol@example.com"
     assert msg["In-Reply-To"] == "<msg-123@mail.example.com>"
     assert msg["References"] == "<msg-123@mail.example.com>"

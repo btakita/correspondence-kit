@@ -1,29 +1,25 @@
 """
-Push a draft markdown file to Gmail as a draft, or send it directly.
+Push a draft markdown file as an email draft, or send it directly.
 
-Default: creates a Gmail draft for review.
+Default: creates a draft via IMAP APPEND.
 With --send: sends the email immediately via SMTP.
 
+Resolves the sending account from draft metadata (**Account** or **From**),
+falling back to the default account in accounts.toml (or .env legacy).
+
 Usage:
-  uv run push-draft drafts/2026-02-19-example.md          # Save as Gmail draft
-  uv run push-draft drafts/2026-02-19-example.md --send    # Send immediately
+  corrkit push-draft correspondence/drafts/2026-02-19-example.md
+  corrkit push-draft correspondence/drafts/2026-02-19-example.md --send
 """
 
 import argparse
-import os
 import re
 import smtplib
 from datetime import UTC, datetime
 from email.message import EmailMessage
 from pathlib import Path
 
-from dotenv import load_dotenv
 from imapclient import IMAPClient
-
-load_dotenv()
-
-GMAIL_USER = os.environ["GMAIL_USER_EMAIL"]
-GMAIL_APP_PASSWORD = os.environ["GMAIL_APP_PASSWORD"].replace(" ", "")
 
 _META_RE = re.compile(r"^\*\*(.+?)\*\*:\s*(.+)$")
 
@@ -62,10 +58,12 @@ def parse_draft(path: Path) -> tuple[dict[str, str], str, str]:
     return meta, subject, body
 
 
-def compose_email(meta: dict[str, str], subject: str, body: str) -> EmailMessage:
+def compose_email(
+    meta: dict[str, str], subject: str, body: str, *, from_addr: str
+) -> EmailMessage:
     """Compose an email message from draft metadata."""
     msg = EmailMessage()
-    msg["From"] = GMAIL_USER
+    msg["From"] = from_addr
     msg["To"] = meta["To"]
     msg["Subject"] = subject
 
@@ -79,19 +77,38 @@ def compose_email(meta: dict[str, str], subject: str, body: str) -> EmailMessage
     return msg
 
 
-def push_to_drafts(msg: EmailMessage) -> None:
-    """APPEND an email to [Gmail]/Drafts via IMAP."""
-    with IMAPClient("imap.gmail.com", ssl=True) as imap:
-        imap.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+def push_to_drafts(
+    msg: EmailMessage,
+    *,
+    imap_host: str,
+    imap_port: int,
+    starttls: bool,
+    user: str,
+    password: str,
+    drafts_folder: str,
+) -> None:
+    """APPEND an email to the drafts folder via IMAP."""
+    ssl = not starttls
+    with IMAPClient(imap_host, port=imap_port, ssl=ssl) as imap:
+        if starttls:
+            imap.starttls()
+        imap.login(user, password)
         imap.append(
-            "[Gmail]/Drafts", msg.as_bytes(), flags=[], msg_time=datetime.now(tz=UTC)
+            drafts_folder, msg.as_bytes(), flags=[], msg_time=datetime.now(tz=UTC)
         )
 
 
-def send_email(msg: EmailMessage) -> None:
-    """Send an email via Gmail SMTP."""
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-        smtp.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+def send_email(
+    msg: EmailMessage,
+    *,
+    smtp_host: str,
+    smtp_port: int,
+    user: str,
+    password: str,
+) -> None:
+    """Send an email via SMTP."""
+    with smtplib.SMTP_SSL(smtp_host, smtp_port) as smtp:
+        smtp.login(user, password)
         smtp.send_message(msg)
 
 
@@ -111,8 +128,40 @@ def _update_draft_status(path: Path, new_status: str) -> None:
     path.write_text(updated, encoding="utf-8")
 
 
+def _resolve_account(meta: dict[str, str]):
+    """Resolve sending account from draft metadata."""
+    from accounts import (
+        get_account_for_email,
+        get_default_account,
+        load_accounts_or_env,
+        resolve_password,
+    )
+
+    accounts = load_accounts_or_env()
+
+    # Try **Account** field first
+    acct_name = meta.get("Account", "")
+    if acct_name and acct_name in accounts:
+        acct = accounts[acct_name]
+        return acct_name, acct, resolve_password(acct)
+
+    # Try **From** field to match by email
+    from_addr = meta.get("From", "")
+    if from_addr:
+        result = get_account_for_email(accounts, from_addr)
+        if result:
+            name, acct = result
+            return name, acct, resolve_password(acct)
+
+    # Fall back to default
+    name, acct = get_default_account(accounts)
+    return name, acct, resolve_password(acct)
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Push a draft markdown file to Gmail")
+    parser = argparse.ArgumentParser(
+        description="Push a draft markdown file as an email draft"
+    )
     parser.add_argument("file", type=Path, help="Path to the draft markdown file")
     parser.add_argument(
         "--send",
@@ -134,6 +183,9 @@ def main() -> None:
             f"Must be one of: {', '.join(VALID_SEND_STATUSES)}"
         )
 
+    acct_name, acct, password = _resolve_account(meta)
+
+    print(f"Account: {acct_name} ({acct.user})")
     print(f"To:      {meta['To']}")
     print(f"Subject: {subject}")
     if meta.get("Author"):
@@ -145,15 +197,29 @@ def main() -> None:
     print(f"Body:    {body[:80]}{'...' if len(body) > 80 else ''}")
     print()
 
-    msg = compose_email(meta, subject, body)
+    msg = compose_email(meta, subject, body, from_addr=acct.user)
 
     if args.send:
-        send_email(msg)
+        send_email(
+            msg,
+            smtp_host=acct.smtp_host,
+            smtp_port=acct.smtp_port,
+            user=acct.user,
+            password=password,
+        )
         _update_draft_status(args.file, "sent")
         print("Email sent. Status updated to 'sent'.")
     else:
-        push_to_drafts(msg)
-        print("Draft created in Gmail. Open Gmail drafts to review and send.")
+        push_to_drafts(
+            msg,
+            imap_host=acct.imap_host,
+            imap_port=acct.imap_port,
+            starttls=acct.imap_starttls,
+            user=acct.user,
+            password=password,
+            drafts_folder=acct.drafts_folder,
+        )
+        print("Draft created. Open your email drafts to review and send.")
 
 
 if __name__ == "__main__":

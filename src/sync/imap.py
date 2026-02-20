@@ -1,22 +1,16 @@
 """
-Syncs Gmail threads (by label) to local Markdown files under conversations/.
-Uses IMAP with an App Password — no OAuth required.
-
-Setup:
-  1. Enable 2FA on your Google account
-  2. Go to myaccount.google.com/apppasswords
-  3. Create an app password named "correspondence"
-  4. Add to .env: GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx
+Syncs email threads (by label) to local Markdown files under conversations/.
+Supports multiple IMAP accounts via accounts.toml with provider presets.
 
 Usage:
-  uv run sync-gmail            # Incremental sync (fetches only new messages)
-  uv run sync-gmail --full     # Full re-sync (ignores saved state)
+  corrkit sync                   # Sync all accounts
+  corrkit sync --account personal # Sync one account
+  corrkit sync --full            # Full re-sync (ignores saved state)
 """
 
 import argparse
 import email
 import email.message
-import os
 import re
 from datetime import UTC, datetime, timedelta
 from email.header import decode_header as _decode_header
@@ -24,24 +18,12 @@ from email.utils import parsedate_to_datetime
 from pathlib import Path
 
 import msgspec
-from dotenv import load_dotenv
 from imapclient import IMAPClient
 
-from .types import LabelState, Message, SyncState, Thread
+from .types import AccountSyncState, LabelState, Message, SyncState, Thread
+from .types import load_state as _load_state
 
-load_dotenv()
-
-GMAIL_USER = os.environ["GMAIL_USER_EMAIL"]
-GMAIL_APP_PASSWORD = os.environ["GMAIL_APP_PASSWORD"].replace(" ", "")
-SYNC_LABELS = [
-    s.strip() for s in os.environ["GMAIL_SYNC_LABELS"].split(",") if s.strip()
-]
-SYNC_DAYS = int(os.getenv("GMAIL_SYNC_DAYS", "90"))
-
-STATE_FILE = Path(".sync-state.json")
-
-if not SYNC_LABELS:
-    raise SystemExit("GMAIL_SYNC_LABELS must list at least one label")
+STATE_FILE = Path("correspondence") / ".sync-state.json"
 
 
 # ---------------------------------------------------------------------------
@@ -51,7 +33,7 @@ if not SYNC_LABELS:
 
 def load_state() -> SyncState:
     if STATE_FILE.exists():
-        return msgspec.json.decode(STATE_FILE.read_bytes(), type=SyncState)
+        return _load_state(STATE_FILE.read_bytes())
     return SyncState()
 
 
@@ -272,7 +254,7 @@ def _merge_message_to_file(
         existing_file.unlink()
         print(f"  Renamed: {existing_file.name} → {new_filename}")
     else:
-        print(f"  Wrote: conversations/{label_name}/{new_filename}")
+        print(f"  Wrote: {new_filename}")
 
 
 # ---------------------------------------------------------------------------
@@ -283,9 +265,10 @@ def _merge_message_to_file(
 def sync_label(
     imap: IMAPClient,
     label_name: str,
-    state: SyncState,
+    acct_state: AccountSyncState,
     *,
     full: bool,
+    sync_days: int = 3650,
     out_dir: Path | None = None,
 ) -> None:
     print(f"Syncing label: {label_name}")
@@ -297,7 +280,7 @@ def sync_label(
         return
 
     uidvalidity = folder_info[b"UIDVALIDITY"]
-    prior = state.labels.get(label_name)
+    prior = acct_state.labels.get(label_name)
 
     # Decide: full fetch or incremental
     do_full = full or prior is None or prior.uidvalidity != uidvalidity
@@ -312,7 +295,7 @@ def sync_label(
 
         since = (
             datetime.now(tz=UTC).replace(hour=0, minute=0, second=0)
-            - timedelta(days=SYNC_DAYS)
+            - timedelta(days=sync_days)
         ).strftime("%d-%b-%Y")
         uids = imap.search(["SINCE", since])
     else:
@@ -324,7 +307,7 @@ def sync_label(
 
     if not uids:
         print("  No new messages")
-        state.labels[label_name] = LabelState(
+        acct_state.labels[label_name] = LabelState(
             uidvalidity=uidvalidity,
             last_uid=prior.last_uid if prior else 0,
         )
@@ -333,7 +316,7 @@ def sync_label(
     print(f"  Fetching {len(uids)} message(s)")
 
     if out_dir is None:
-        out_dir = Path("conversations") / label_name
+        out_dir = Path("correspondence") / "conversations" / label_name
     max_uid = prior.last_uid if prior else 0
 
     for uid in uids:
@@ -364,13 +347,13 @@ def sync_label(
         if uid > max_uid:
             max_uid = uid
 
-    state.labels[label_name] = LabelState(
+    acct_state.labels[label_name] = LabelState(
         uidvalidity=uidvalidity,
         last_uid=max_uid,
     )
 
 
-def _build_label_routes() -> dict[str, Path]:
+def _build_label_routes(account_name: str = "") -> dict[str, Path]:
     """Build label→output_dir map from collaborators.toml.
 
     Shared labels route to shared/{name}/conversations/{label}/.
@@ -383,36 +366,118 @@ def _build_label_routes() -> dict[str, Path]:
 
     routes: dict[str, Path] = {}
     for name, collab in load_collaborators().items():
+        # If collaborator is bound to a specific account, skip if mismatch
+        if (
+            account_name
+            and hasattr(collab, "account")
+            and collab.account
+            and collab.account != account_name
+        ):
+            continue
         for label in collab.labels:
             routes[label] = Path("shared") / name / "conversations" / label
     return routes
 
 
+def sync_account(
+    account_name: str,
+    *,
+    host: str,
+    port: int,
+    starttls: bool,
+    user: str,
+    password: str,
+    labels: list[str],
+    sync_days: int,
+    state: SyncState,
+    full: bool,
+    base_dir: Path = Path("correspondence") / "conversations",
+) -> None:
+    """Sync all labels for one account."""
+    acct_state = state.accounts.setdefault(account_name, AccountSyncState())
+
+    # Build label routing from collaborators.toml
+    routes = _build_label_routes(account_name)
+
+    # Merge shared labels into sync set
+    all_labels = list(dict.fromkeys(labels + list(routes.keys())))
+
+    if not all_labels:
+        print(f"  No labels configured for account '{account_name}' — skipping")
+        return
+
+    print(f"Connecting to {host}:{port} as {user}")
+
+    ssl = not starttls
+    with IMAPClient(host, port=port, ssl=ssl) as imap:
+        if starttls:
+            imap.starttls()
+        imap.login(user, password)
+        for label in all_labels:
+            out_dir = routes.get(label)
+            if out_dir is None:
+                # For _legacy account, keep flat path; for named accounts, add prefix
+                if account_name == "_legacy":
+                    out_dir = base_dir / label
+                else:
+                    out_dir = base_dir / account_name / label
+            sync_label(
+                imap,
+                label,
+                acct_state,
+                full=full,
+                sync_days=sync_days,
+                out_dir=out_dir,
+            )
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Sync Gmail threads to Markdown")
+    from accounts import load_accounts_or_env, resolve_password
+
+    parser = argparse.ArgumentParser(description="Sync email threads to Markdown")
     parser.add_argument(
         "--full",
         action="store_true",
         help="Ignore saved state and re-fetch all messages",
     )
+    parser.add_argument(
+        "--account",
+        help="Sync only the named account",
+    )
     args = parser.parse_args()
 
+    accounts = load_accounts_or_env()
     state = SyncState() if args.full else load_state()
 
-    # Build label routing from collaborators.toml
-    routes = _build_label_routes()
+    if args.account:
+        if args.account not in accounts:
+            raise SystemExit(
+                f"Unknown account: {args.account}\n"
+                f"Available: {', '.join(accounts.keys())}"
+            )
+        names = [args.account]
+    else:
+        names = list(accounts.keys())
 
-    # Merge shared labels into sync set
-    all_labels = list(dict.fromkeys(SYNC_LABELS + list(routes.keys())))
-
-    with IMAPClient("imap.gmail.com", ssl=True) as imap:
-        imap.login(GMAIL_USER, GMAIL_APP_PASSWORD)
-        for label in all_labels:
-            out_dir = routes.get(label)  # None → default conversations/{label}
-            sync_label(imap, label, state, full=args.full, out_dir=out_dir)
+    for name in names:
+        acct = accounts[name]
+        print(f"\n=== Account: {name} ({acct.user}) ===")
+        password = resolve_password(acct)
+        sync_account(
+            name,
+            host=acct.imap_host,
+            port=acct.imap_port,
+            starttls=acct.imap_starttls,
+            user=acct.user,
+            password=password,
+            labels=acct.labels,
+            sync_days=acct.sync_days,
+            state=state,
+            full=args.full,
+        )
 
     save_state(state)
-    print("Sync complete.")
+    print("\nSync complete.")
 
 
 if __name__ == "__main__":
