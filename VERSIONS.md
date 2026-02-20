@@ -1,5 +1,14 @@
 # Versions
 
+## 0.4.1
+
+Add-label command and audit-docs fixes.
+
+- `corrkit add-label LABEL --account NAME`: Add a label to an account's sync config via text-level TOML edit (preserves comments).
+- `contact-add` integration: `--label` + `--account` automatically adds label to account sync config.
+- audit-docs: Fix tree parser for symlink-to-directory entries.
+- SKILL.md: Updated to reflect flat conversation directory, contacts, manifest.
+
 ## 0.4.0
 
 Flat conversation directory, contacts, manifest.
