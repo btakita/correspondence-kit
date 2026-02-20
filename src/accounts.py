@@ -1,7 +1,10 @@
 """Account configuration — parse accounts.toml with provider presets."""
 
+import argparse
 import os
+import re
 import subprocess
+import sys
 import tomllib
 from pathlib import Path
 
@@ -160,6 +163,128 @@ def get_account_for_email(
         if acct.user.lower() == email_lower:
             return name, acct
     return None
+
+
+def add_label_to_account(
+    account_name: str,
+    label: str,
+    path: Path | None = None,
+) -> bool:
+    """Add a label to an account's labels list in accounts.toml.
+
+    Does a text-level edit to preserve comments and formatting.
+    Returns True if the label was added, False if already present.
+    """
+    if path is None:
+        path = CONFIG_PATH
+    if not path.exists():
+        print(
+            f"accounts.toml not found at {path}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    # Verify account exists and label isn't already there
+    accounts = load_accounts(path)
+    if account_name not in accounts:
+        print(
+            f"Unknown account: {account_name}\n"
+            f"Available: {', '.join(accounts.keys())}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    if label in accounts[account_name].labels:
+        return False
+
+    # Text-level edit: find the labels line for this account section
+    text = path.read_text(encoding="utf-8")
+
+    # Find the account section header
+    section_re = re.compile(
+        rf"^\[accounts\.{re.escape(account_name)}\]",
+        re.MULTILINE,
+    )
+    section_match = section_re.search(text)
+    if not section_match:
+        # Try flat format (no [accounts.] prefix)
+        section_re = re.compile(
+            rf"^\[{re.escape(account_name)}\]", re.MULTILINE
+        )
+        section_match = section_re.search(text)
+    if not section_match:
+        print(
+            f"Could not find [{account_name}] section in {path}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    # Find the labels = [...] line after the section header
+    labels_re = re.compile(
+        r'^(labels\s*=\s*\[)(.*?)(\])',
+        re.MULTILINE,
+    )
+    # Search from the section start
+    labels_match = labels_re.search(text, section_match.end())
+    if not labels_match:
+        print(
+            f"Could not find labels line for account {account_name}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    # Check it's within this section (before next section header)
+    next_section = re.search(r'^\[', text[section_match.end():], re.MULTILINE)
+    beyond_section = (
+        next_section
+        and labels_match.start() > section_match.end() + next_section.start()
+    )
+    if beyond_section:
+        print(
+            f"Could not find labels line for account {account_name}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    # Append the label
+    existing = labels_match.group(2).strip()
+    if existing:
+        new_labels = f'{existing}, "{label}"'
+    else:
+        new_labels = f'"{label}"'
+
+    new_text = (
+        text[: labels_match.start()]
+        + f"labels = [{new_labels}]"
+        + text[labels_match.end():]
+    )
+    path.write_text(new_text, encoding="utf-8")
+    return True
+
+
+def add_label_main() -> None:
+    """CLI: corrkit add-label LABEL --account ACCOUNT"""
+    parser = argparse.ArgumentParser(
+        description="Add a label to an account's sync config"
+    )
+    parser.add_argument("label", help="Label to add")
+    parser.add_argument(
+        "--account",
+        required=True,
+        help="Account name in accounts.toml",
+    )
+    args = parser.parse_args()
+
+    added = add_label_to_account(args.account, args.label)
+    if added:
+        print(
+            f"Added '{args.label}' to account "
+            f"'{args.account}' in accounts.toml"
+        )
+    else:
+        print(
+            f"Label '{args.label}' already in account "
+            f"'{args.account}'"
+        )
 
 
 def load_watch_config(path: Path | None = None) -> WatchConfig:

@@ -149,6 +149,41 @@ def test_agents_md_has_template_sections():
     assert "## Notes" in md
 
 
+def test_add_with_label_and_account_updates_accounts_toml(tmp_path, monkeypatch):
+    """contact-add with --label and --account adds label to accounts.toml."""
+    contacts_config = tmp_path / "contacts.toml"
+    contacts_config.write_text("", encoding="utf-8")
+    contacts_dir = tmp_path / "correspondence" / "contacts"
+
+    accounts_config = tmp_path / "accounts.toml"
+    accounts_config.write_text(
+        '[accounts.personal]\nprovider = "gmail"\n'
+        'user = "user@gmail.com"\nlabels = ["correspondence"]\n',
+        encoding="utf-8",
+    )
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("contact.add.CONTACTS_DIR", contacts_dir)
+    monkeypatch.setattr("contact.CONFIG_PATH", contacts_config)
+    monkeypatch.setattr("accounts.CONFIG_PATH", accounts_config)
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "contact-add", "alex",
+            "--email", "alex@example.com",
+            "--label", "for-alex",
+            "--account", "personal",
+        ],
+    )
+
+    main()
+
+    from accounts import load_accounts
+
+    accounts = load_accounts(accounts_config)
+    assert "for-alex" in accounts["personal"].labels
+
+
 def test_contact_add_listed_in_help():
     """corrkit --help includes the contact-add command."""
     result = subprocess.run(

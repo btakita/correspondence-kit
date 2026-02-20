@@ -16,6 +16,7 @@ COMMANDS = [
     ("collab-status", "Check for pending changes"),
     ("collab-remove NAME [--delete-repo]", "Remove a collaborator"),
     ("collab-reset [NAME] [--no-sync]", "Pull, regenerate templates, commit & push"),
+    ("add-label LABEL --account NAME", "Add a label to an account's sync config"),
     ("contact-add NAME --email EMAIL", "Add a contact with context docs"),
     ("find-unanswered [--from NAME]", "Find threads awaiting a reply"),
     ("validate-draft FILE [FILE...]", "Validate draft markdown files"),

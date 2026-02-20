@@ -69,6 +69,7 @@ corrkit sync-gmail               # Alias for sync (backward compat)
 corrkit list-folders [ACCOUNT]   # List IMAP folders for an account
 corrkit push-draft correspondence/drafts/FILE.md # Save a draft via IMAP
 corrkit push-draft correspondence/drafts/FILE.md --send  # Send via SMTP
+corrkit add-label LABEL --account NAME   # Add a label to an account's sync config
 corrkit contact-add NAME --email EMAIL    # Add a contact with context docs
 corrkit collab-add NAME --label LABEL     # Add a collaborator
 corrkit collab-sync [NAME]        # Push/pull shared submodules

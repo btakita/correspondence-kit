@@ -11,7 +11,9 @@ Manage and draft correspondence using locally synced email threads.
 
 ## Available Tools
 
-- `correspondence/conversations/` — synced email threads as Markdown, organized by label
+- `correspondence/conversations/` — synced email threads as Markdown (flat, one file per thread)
+- `correspondence/contacts/{name}/AGENTS.md` — per-contact context for drafting
+- `correspondence/manifest.toml` — thread index by labels, accounts, contacts
 - `correspondence/drafts/` — outgoing email drafts being worked on
 - `corrkit find-unanswered` — list threads awaiting a reply
 - `corrkit sync` — re-sync threads from all accounts

@@ -96,7 +96,16 @@ def main() -> None:
     save_contacts(contacts)
     print("Updated contacts.toml")
 
-    # 3. Next steps
+    # 3. Add labels to account sync config if both --label and --account given
+    if labels and account:
+        from accounts import add_label_to_account
+
+        for label in labels:
+            added = add_label_to_account(account, label)
+            if added:
+                print(f"Added label '{label}' to account '{account}' in accounts.toml")
+
+    # 4. Next steps
     print()
     print("Done! Next steps:")
     print(f"  - Edit {contact_dir}/AGENTS.md with relationship context")
