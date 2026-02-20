@@ -40,7 +40,7 @@ def test_sync_routes_to_shared_dir(tmp_path, monkeypatch):
         subject="Hello Alex",
         body="Hi there.",
     )
-    _merge_message_to_file(out_dir, "for-drafter", msg, "hello")
+    _merge_message_to_file(out_dir, "for-drafter", "personal", msg, "hello")
 
     files = list(out_dir.glob("*.md"))
     assert len(files) == 1

@@ -111,24 +111,25 @@ def _generate_agents_md(name: str) -> str:
 
 ## Conversation format
 
-Synced conversations live in `conversations/{{label}}/`. Each file is one thread:
+Synced conversations live in `conversations/`. Each file is one thread:
 
 ```markdown
 # Subject Line
 
-**Label**: label-name
+**Labels**: label-name, other-label
+**Accounts**: personal
 **Thread ID**: thread-id
-**Last updated**: 2026-02-19
+**Last updated**: Mon, 10 Feb 2025 11:00:00 +0000
 
 ---
 
-## Sender Name <sender@example.com> — Mon, 10 Feb 2025 10:00:00 +0000
+## Sender Name <sender@example.com> \u2014 Mon, 10 Feb 2025 10:00:00 +0000
 
 Message body text.
 
 ---
 
-## Another Sender — Mon, 10 Feb 2025 11:00:00 +0000
+## Another Sender \u2014 Mon, 10 Feb 2025 11:00:00 +0000
 
 Reply body text.
 ```

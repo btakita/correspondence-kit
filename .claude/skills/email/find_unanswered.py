@@ -27,7 +27,10 @@ if not CONVERSATIONS.exists():
     sys.exit(1)
 
 # Match "## Sender Name <email@example.com> — Date" or "## Name — Date"
-SENDER_RE = re.compile(r"^## (.+?) —", re.MULTILINE)
+SENDER_RE = re.compile(r"^## (.+?) \u2014", re.MULTILINE)
+
+# Labels from **Labels**: or legacy **Label**: line
+LABELS_RE = re.compile(r"\*\*Labels?\*\*:\s*(.+)")
 
 
 def last_sender(text: str) -> str:
@@ -35,7 +38,12 @@ def last_sender(text: str) -> str:
     return matches[-1].strip() if matches else ""
 
 
-unanswered: list[tuple[str, str, str]] = []  # (label, filename, last_sender)
+def thread_labels(text: str) -> str:
+    m = LABELS_RE.search(text)
+    return m.group(1).strip() if m else ""
+
+
+unanswered: list[tuple[str, str, str]] = []  # (labels, filename, last_sender)
 
 thread_files = sorted(
     CONVERSATIONS.rglob("*.md"), key=lambda p: p.name, reverse=True
@@ -43,17 +51,17 @@ thread_files = sorted(
 for thread_file in thread_files:
     text = thread_file.read_text(encoding="utf-8")
     sender = last_sender(text)
-    # Consider it unanswered if the last sender doesn't contain the user's email or name
+    # Consider it unanswered if the last sender doesn't contain the user's email
     if USER_EMAIL not in sender.lower():
-        label = thread_file.parent.name
-        unanswered.append((label, thread_file.name, sender))
+        labels = thread_labels(text) or thread_file.parent.name
+        unanswered.append((labels, thread_file.name, sender))
 
 if not unanswered:
     print("No unanswered threads found.")
     sys.exit(0)
 
 print(f"Unanswered threads ({len(unanswered)}):\n")
-for label, filename, sender in unanswered:
-    print(f"  [{label}] {filename}")
+for labels, filename, sender in unanswered:
+    print(f"  [{labels}] {filename}")
     print(f"           Last from: {sender}")
     print()

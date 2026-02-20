@@ -67,6 +67,7 @@ corrkit sync-gmail               # Alias for sync (backward compat)
 corrkit list-folders [ACCOUNT]   # List IMAP folders for an account
 corrkit push-draft correspondence/drafts/FILE.md # Save a draft via IMAP
 corrkit push-draft correspondence/drafts/FILE.md --send  # Send via SMTP
+corrkit contact-add NAME --email EMAIL    # Add a contact with context docs
 corrkit collab-add NAME --label LABEL     # Add a collaborator
 corrkit collab-sync [NAME]        # Push/pull shared submodules
 corrkit collab-status             # Check for pending changes
@@ -82,7 +83,7 @@ corrkit help                      # Show command reference
 
 Run with `uv run corrkit <subcommand>` if the package isn't installed globally.
 
-Synced threads are written to `correspondence/conversations/[account]/[label]/[YYYY-MM-DD]-[slug].md`.
+Synced threads are written to `correspondence/conversations/[slug].md` (flat, one file per thread). Labels and accounts are metadata inside each file. A `manifest.toml` index is generated after each sync.
 
 ## Development
 
@@ -107,6 +108,39 @@ Correspondence-kit inverts this. You control what any agent or collaborator can 
 An agent added with `collab-add assistant --label for-assistant` can only see threads you've tagged `for-assistant`. It can't see your other conversations, your contacts, or other collaborators' repos. If the agent is compromised, the blast radius is limited to the threads you chose to share.
 
 This works across multiple email accounts — Gmail, Protonmail, self-hosted — each with its own labels and routing rules, all funneling through the same scoped collaborator model.
+
+## Contacts
+
+Per-contact directories give Claude context when drafting emails — relationship history, tone preferences, recurring topics.
+
+### Adding a contact
+
+```sh
+corrkit contact-add alex --email alex@example.com --email alex@work.com --label correspondence --account personal
+```
+
+This creates `correspondence/contacts/alex/` with an AGENTS.md template (+ CLAUDE.md symlink) and updates `contacts.toml`.
+
+### Contact context
+
+Edit `correspondence/contacts/{name}/AGENTS.md` with:
+- **Relationship**: How you know this person, shared history
+- **Tone**: Communication style overrides (defaults to voice.md)
+- **Topics**: Recurring subjects, current projects
+- **Notes**: Freeform context — preferences, pending items, important dates
+
+### contacts.toml
+
+Maps contacts to email addresses and conversation labels (for lookup, not sync routing):
+
+```toml
+[alex]
+emails = ["alex@example.com", "alex@work.com"]
+labels = ["correspondence"]
+account = "personal"
+```
+
+Copy `contacts.toml.example` to `contacts.toml` to get started.
 
 ## Collaborators
 

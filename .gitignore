@@ -1,5 +1,6 @@
 .env
 accounts.toml
+contacts.toml
 AGENTS.local.md
 CLAUDE.local.md
 correspondence

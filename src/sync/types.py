@@ -12,8 +12,9 @@ class Message(msgspec.Struct):
 
 class Thread(msgspec.Struct):
     id: str
-    label: str
     subject: str
+    labels: list[str] = []
+    accounts: list[str] = []
     messages: list[Message] = []
     last_date: str = ""
 
