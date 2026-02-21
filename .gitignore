@@ -6,7 +6,8 @@ CLAUDE.local.md
 correspondence
 *.credentials.json
 credentials.json
-.venv/
-__pycache__/
 .idea/
 tmp/
+
+# Rust
+target/
