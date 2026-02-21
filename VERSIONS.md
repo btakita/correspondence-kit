@@ -4,6 +4,19 @@ Corrkit is alpha software. Expect breaking changes between minor versions.
 
 Use `BREAKING CHANGE:` prefix in version entries to flag incompatible changes.
 
+## 0.7.0
+
+BREAKING CHANGE: Rust rewrite. Complete port from Python to Rust.
+
+- **Rust rewrite**: All ~3,750 LOC of Python replaced with ~6,700 LOC of Rust. Single crate, no workspace. All 25 CLI commands ported with identical behavior and file formats.
+- **BREAKING CHANGE: Python removal**: `pyproject.toml`, `uv.lock`, and all `.py` files removed. Install via `cargo install corrkit` instead of `pip install corrkit`.
+- **Dependencies**: clap (CLI), serde/toml/toml_edit (config), imap/native-tls (IMAP), mailparse (email parsing), lettre (SMTP), chrono (dates), directories (platform dirs), tokio (watch daemon), anyhow/thiserror (errors).
+- **Format-preserving TOML**: `add-label` now uses `toml_edit` crate (cleaner than Python's regex approach).
+- **Gmail OAuth**: Stub that prints instructions to use Python `corrkit sync-auth` for one-time setup. Full OAuth port deferred.
+- **No behavioral changes**: All file formats, sync algorithms, collaborator workflows, and CLI interfaces are identical to 0.6.1. Existing `correspondence/` data repos are fully compatible.
+
+**Migration from 0.6.x**: Uninstall Python corrkit (`pip uninstall corrkit`), install Rust binary (`cargo install corrkit` or download from releases). No data migration needed — all file formats are unchanged.
+
 ## 0.6.1
 
 Lower Python requirement to 3.11+, app config with multi-space support.

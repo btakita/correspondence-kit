@@ -2,7 +2,7 @@ use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
 #[derive(Parser)]
-#[command(name = "corrkit", version, about = "Sync email threads from IMAP to Markdown, draft replies, manage collaborators")]
+#[command(name = "corrkit", version, about = "Sync email threads from IMAP to Markdown, draft replies, manage collaborators", disable_help_subcommand = true)]
 pub struct Cli {
     /// Use a named space from app config
     #[arg(long, global = true)]
@@ -49,8 +49,8 @@ pub enum Commands {
         sync: bool,
 
         /// Space name to register
-        #[arg(long, default_value = "default")]
-        space: String,
+        #[arg(long = "space-name", default_value = "default")]
+        space_name: String,
 
         /// Overwrite existing accounts.toml
         #[arg(long)]

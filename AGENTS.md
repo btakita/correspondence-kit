@@ -2,17 +2,20 @@
 
 ## Tech Stack
 
-- **Runtime**: Python 3.11+ via `uv`
-- **Linter/formatter**: `ruff`
-- **Type checker**: `ty`
-- **Types/serialization**: `msgspec` (Struct instead of dataclasses)
+- **Language**: Rust (2021 edition)
+- **Build**: `cargo build`, `cargo test`, `cargo clippy`
+- **CLI**: `clap` (derive macros)
+- **Serialization**: `serde` + `toml` / `toml_edit` (format-preserving) / `serde_json`
+- **IMAP**: `imap` + `native-tls`
+- **Email parsing**: `mailparse`
+- **SMTP**: `lettre`
+- **Dates**: `chrono`
 - **Storage**: Markdown files (one flat directory, one file per conversation thread)
 - **Sources**: Any IMAP provider (Gmail, Protonmail Bridge, generic IMAP); Slack and social media planned
-- **Cloudflare** (routing layer): TypeScript Workers reading from D1/KV populated by Python
 
 ## Two Repos
 
-**corrkit** is the tool — Python source, tests, config templates. It is a public repo.
+**corrkit** is the tool — Rust source, tests, config templates. It is a public repo.
 
 **correspondence** is the data — synced threads, drafts, contacts, collaborator submodules.
 It is a separate, private repo. corrkit accesses it via a `correspondence/` path in the
@@ -26,7 +29,7 @@ The `correspondence` entry in `.gitignore` keeps the data repo out of corrkit's 
 
 **General user workflow:** `corrkit init --user EMAIL` creates `~/Documents/correspondence` with
 config and data, and registers it as a named space. Commands find the data dir via the resolution
-order in `src/resolve.py`: local `correspondence/`, `CORRKIT_DATA` env, app config space,
+order in `src/resolve.rs`: local `correspondence/`, `CORRKIT_DATA` env, app config space,
 `~/Documents` fallback. Use `--space NAME` to select a specific space.
 
 ## Project Structure
@@ -34,8 +37,8 @@ order in `src/resolve.py`: local `correspondence/`, `CORRKIT_DATA` env, app conf
 ```
 ./                                 # Tool repo (this repo)
   AGENTS.md                        # Project instructions (CLAUDE.md symlinks here)
-  SPECS.md                         # Functional specification (for Rust port)
-  pyproject.toml
+  SPECS.md                         # Functional specification
+  Cargo.toml
   voice.md                         # Writing voice guidelines (committed)
   accounts.toml                    # Multi-account IMAP config (gitignored)
   accounts.toml.example            # Template with provider presets (committed)
@@ -47,38 +50,60 @@ order in `src/resolve.py`: local `correspondence/`, `CORRKIT_DATA` env, app conf
     skills/
       email/
         SKILL.md                   # Email drafting & management skill
-        find_unanswered.py         # Find threads needing a reply
   src/
-    resolve.py                     # Path resolution (data dir, config dir)
-    init.py                        # Initialize a new data directory
-    app_config.py                  # App config (spaces, config.toml)
-    spaces.py                      # spaces command
-    accounts.py                    # Account config parser (accounts.toml)
+    main.rs                        # Minimal: clap parse + dispatch
+    lib.rs                         # Module declarations, re-exports
+    cli.rs                         # clap derive structs (Commands, ForCommands, ByCommands)
+    util.rs                        # slugify(), thread_key_from_subject(), run_cmd()
+    resolve.rs                     # Path resolution (data_dir, config_dir, all derived paths)
+    app_config.rs                  # Spaces, config.toml via `directories` crate
+    accounts.rs                    # accounts.toml parser, provider presets, Account struct
+    init.rs                        # corrkit init
+    spaces.rs                      # corrkit spaces
+    help.rs                        # corrkit help
+    audit_docs.rs                  # corrkit audit-docs
+    watch.rs                       # IMAP polling daemon (tokio for timer/signals)
+    config/
+      mod.rs                       # Re-exports collaborator and contact
+      collaborator.rs              # collaborators.toml, Collaborator struct
+      contact.rs                   # contacts.toml, Contact struct
     sync/
-      imap.py                      # Multi-account IMAP sync logic
-      types.py                     # msgspec Structs
-      auth.py                      # One-time Gmail OAuth flow
+      mod.rs                       # sync_account, sync command entry point
+      types.rs                     # Message, Thread, SyncState, LabelState
+      markdown.rs                  # Thread <-> Markdown serialization/parsing
+      imap_sync.rs                 # IMAP connect, fetch, merge, dedup, label routing
+      manifest.rs                  # manifest.toml generation
+      folders.rs                   # list-folders command
+      auth.rs                      # Gmail OAuth (stub — use Python fallback)
     draft/
-      push.py                      # Push draft to email (draft or send)
+      mod.rs                       # parse_draft, compose_email, push/send
     collab/
-      __init__.py                  # Collaborator config parser
-      add.py                       # for add command
-      sync.py                      # for sync / for status commands
-      remove.py                    # for remove command
-      rename.py                    # for rename command
-      reset.py                     # for reset command
-      find_unanswered.py           # by find-unanswered command
-      validate_draft.py            # by validate-draft command
+      mod.rs                       # Re-exports all submodules
+      add.rs                       # for add
+      sync.rs                      # for sync / for status
+      remove.rs                    # for remove
+      rename.rs                    # for rename
+      reset.rs                     # for reset
+      find_unanswered.rs           # by find-unanswered
+      validate_draft.rs            # by validate-draft
+      templates.rs                 # AGENTS.md, README.md template generators
     contact/
-      __init__.py                  # Contact config parser
-      add.py                       # contact-add command
-    cloudflare/
-      __init__.py                  # Push intelligence to Cloudflare (planned)
-    watch.py                       # IMAP polling daemon (corrkit watch)
+      mod.rs                       # Re-exports add
+      add.rs                       # contact-add
   services/
     corrkit-watch.service          # systemd user unit template
     com.corrkit.watch.plist        # launchd agent template
   tests/
+    common/mod.rs                  # Shared fixtures (temp data dirs, config writers)
+    test_resolve.rs
+    test_accounts.rs
+    test_app_config.rs
+    test_init.rs
+    test_sync.rs
+    test_draft.rs
+    test_collab.rs
+    test_contact.rs
+    test_cli.rs
 
 correspondence/                    # Data repo (separate, gitignored)
   conversations/                   # Synced threads (flat, one file per thread)
@@ -86,11 +111,11 @@ correspondence/                    # Data repo (separate, gitignored)
   contacts/                        # Per-contact context docs
     [name]/
       AGENTS.md                    # Relationship, tone, topics, notes
-      CLAUDE.md                    # Symlink → AGENTS.md
+      CLAUDE.md                    # Symlink -> AGENTS.md
   drafts/                          # Outgoing email drafts
     [YYYY-MM-DD]-[subject].md
   for/                             # Collaborator submodules (outgoing)
-    [gh-user]/                     # submodule → {owner}/to-{collab-gh}
+    [gh-user]/                     # submodule -> {owner}/to-{collab-gh}
       conversations/*.md
       drafts/*.md
       AGENTS.md
@@ -114,14 +139,14 @@ See `voice.md` (committed) for tone, style, and formatting guidelines.
 
 **New user (general):**
 ```sh
-pip install corrkit   # or: uvx corrkit init --user you@gmail.com
+cargo install corrkit
 corrkit init --user you@gmail.com
 ```
 
 **Developer (from repo checkout):**
 ```sh
 cp accounts.toml.example accounts.toml   # configure your email accounts
-uv sync
+cargo build
 ```
 
 See README.md for full config reference (accounts.toml, contacts.toml, Gmail OAuth).
@@ -130,7 +155,7 @@ See README.md for full config reference (accounts.toml, contacts.toml, Gmail OAu
 
 - **Immutable filenames**: Slug derived from subject on first write, never changes.
   Thread identity tracked by `**Thread ID**` metadata inside the file.
-- **File mtime**: Set to last message date via `os.utime()`.
+- **File mtime**: Set to last message date via `libc::utime()`.
 - **Multi-label accumulation**: Thread fetched from multiple labels/accounts accumulates all in metadata.
 - **Incremental by default**: Tracks IMAP UIDs per-account in `.sync-state.json`. `--full` re-fetches everything.
 - **Streaming writes**: Each message merged immediately. If sync crashes, state is not saved; next run re-fetches.
@@ -206,7 +231,7 @@ Plain labels use the collaborator-level `account` field, or match all accounts i
 
 ## Package-Level Instruction Files
 
-Each subpackage can contain its own `AGENTS.md` with package-specific conventions.
+Each module directory can contain its own `AGENTS.md` with package-specific conventions.
 Keep the root `AGENTS.md` focused on cross-cutting concerns.
 
 **Dual-name convention:** `AGENTS.md` is canonical (committed). `CLAUDE.md` is a symlink.
@@ -222,18 +247,19 @@ update instruction files as part of the same change.
 
 ## Conventions
 
-- Use `uv run` for script execution, never bare `python`
-- Use `msgspec.Struct` for all data types — not dataclasses or TypedDict
-- Use `ruff` for linting and formatting
-- Use `ty` for type checking
-- Keep sync, draft, and cloudflare logic in separate subpackages
+- Use `cargo build` / `cargo test` / `cargo clippy -- -D warnings` for development
+- Use `serde` derive for all data types
+- Use `anyhow` for application errors, `thiserror` for domain errors
+- Use `toml_edit` for format-preserving TOML edits (add-label)
+- Use `std::process::Command` for git operations (not `git2`)
+- Use `regex` + `once_cell::Lazy` for compiled regex patterns
+- Keep sync, draft, collab, contact logic in separate modules
 - Do not commit `.env`, `accounts.toml`, `contacts.toml`, `CLAUDE.local.md` / `AGENTS.local.md`, or `correspondence`
-- Scripts must be runnable directly: `uv run src/sync/imap.py`
 - Never bump versions automatically — the user will bump versions explicitly
 - Commits that include a version change should include the version number in the commit message
 - Use `BREAKING CHANGE:` prefix in VERSIONS.md entries for incompatible changes
 - Update `SPECS.md` when corrkit functionality changes (commands, formats, algorithms)
-- Commits must be clean — no dangling unstaged files. When splitting work across commits, stage all related files (including generated files like `uv.lock`)
+- Commits must be clean — no dangling unstaged files. When splitting work across commits, stage all related files (including `Cargo.lock`)
 
 ## .gitignore
 
@@ -245,6 +271,5 @@ CLAUDE.local.md
 AGENTS.local.md
 correspondence
 *.credentials.json
-.venv/
-__pycache__/
+target/
 ```

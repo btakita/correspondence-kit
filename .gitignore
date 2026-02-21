@@ -11,3 +11,10 @@ tmp/
 
 # Rust
 target/
+
+# Skills / agent tools
+.agents/
+.junie/
+.kilocode/
+skills/
+skills-lock.json

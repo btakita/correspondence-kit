@@ -27,7 +27,7 @@ fn main() -> Result<()> {
             github_user,
             name,
             sync,
-            space,
+            space_name,
             force,
         } => corrkit::init::run(
             &user,
@@ -38,7 +38,7 @@ fn main() -> Result<()> {
             &github_user,
             &name,
             sync,
-            &space,
+            &space_name,
             force,
         ),
         Commands::Sync { full, account } => corrkit::sync::run(full, account.as_deref()),
