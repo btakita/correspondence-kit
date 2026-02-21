@@ -17,7 +17,26 @@ pub fn temp_data_dir() -> (TempDir, PathBuf) {
     (tmp, data_dir)
 }
 
-/// Create a minimal accounts.toml for testing.
+/// Create a minimal .corrkit.toml for testing.
+pub fn write_corrkit_toml(dir: &Path, user: &str) {
+    let content = format!(
+        r#"[owner]
+github_user = "testuser"
+name = "Test User"
+
+[accounts.default]
+provider = "gmail"
+user = "{user}"
+password = "testpassword"
+labels = ["correspondence"]
+default = true
+"#,
+        user = user,
+    );
+    std::fs::write(dir.join(".corrkit.toml"), content).unwrap();
+}
+
+/// Create a minimal accounts.toml for testing (legacy format, used in migrate tests).
 pub fn write_accounts_toml(dir: &Path, user: &str) {
     let content = format!(
         r#"[owner]
@@ -36,7 +55,7 @@ default = true
     std::fs::write(dir.join("accounts.toml"), content).unwrap();
 }
 
-/// Create an empty collaborators.toml.
+/// Create an empty collaborators.toml (legacy format, used in migrate tests).
 pub fn write_empty_collaborators(dir: &Path) {
     std::fs::write(dir.join("collaborators.toml"), "").unwrap();
 }

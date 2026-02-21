@@ -4,7 +4,7 @@
 
 **corrkit** is the tool — Rust source, tests, config templates. It is a public repo.
 
-**correspondence** is the data — synced threads, drafts, contacts, collaborator submodules.
+**correspondence** is the data — synced threads, drafts, contacts, mailboxes.
 It is a separate, private repo. corrkit accesses it via a `correspondence/` path in the
 working directory, which can be either:
 
@@ -46,11 +46,11 @@ corrkit init --user you@gmail.com
 
 **Developer (from repo checkout):**
 ```sh
-cp accounts.toml.example accounts.toml   # configure your email accounts
+cp .corrkit.toml.example .corrkit.toml   # configure your email accounts
 make release                              # build + symlink to .bin/corrkit
 ```
 
-See README.md for full config reference (accounts.toml, contacts.toml, Gmail OAuth).
+See README.md for full config reference (.corrkit.toml, contacts.toml, Gmail OAuth).
 
 ## Sync Behavior
 
@@ -60,8 +60,8 @@ See README.md for full config reference (accounts.toml, contacts.toml, Gmail OAu
 - **Multi-label accumulation**: Thread fetched from multiple labels/accounts accumulates all in metadata.
 - **Incremental by default**: Tracks IMAP UIDs per-account in `.sync-state.json`. `--full` re-fetches everything.
 - **Streaming writes**: Each message merged immediately. If sync crashes, state is not saved; next run re-fetches.
-- **Shared label routing**: Labels in `collaborators.toml` route to `correspondence/collabs/{gh-user}/to/conversations/`.
-  Supports `account:label` syntax for per-label account binding.
+- **Shared label routing**: Labels in `[routing]` section of `.corrkit.toml` route to `correspondence/mailboxes/{name}/conversations/`.
+  One label can fan-out to multiple mailboxes.
 - **Dedup**: Messages deduplicated by `(sender, date)` tuple when merging into existing files.
 - **Slug collisions**: Different threads with same slug get `-2`, `-3` suffix.
 - **Orphan cleanup**: On `--full`, files not touched during sync are deleted.
@@ -70,23 +70,24 @@ See README.md for full config reference (accounts.toml, contacts.toml, Gmail OAu
 
 See README.md for conversation markdown format, draft format, and status values.
 
-## Collaborators Config
+## Mailbox Config
 
-The TOML section key is the collaborator's GitHub username. `repo` is auto-derived as
-`{owner_gh}/to-{collab_gh}` if omitted.
+Use `[routing]` for label-to-mailbox mapping and `[mailboxes.*]` for per-mailbox settings in `.corrkit.toml`:
 
 ```toml
-[alex-gh]
-labels = ["for-alex"]
-name = "Alex"
-account = "personal"                    # optional — bind ALL plain labels to one account
+[routing]
+for-alex = ["mailboxes/alex"]
+shared = ["mailboxes/alice", "mailboxes/bob"]
 
-[bot-agent]
-labels = ["for-bot", "proton-dev:INBOX"]   # account:label scopes to one account
+[mailboxes.alex]
+auto_send = false
+
+[mailboxes.bob]
+auto_send = true
 ```
 
-**Label scoping**: `account:label` syntax binds a label to one account.
-Plain labels use the collaborator-level `account` field, or match all accounts if unset.
+**Label scoping**: `account:label` syntax binds a label to one account (e.g. `"proton-dev:INBOX"`).
+Plain labels match all accounts.
 
 ## Package-Level Instruction Files
 
@@ -112,8 +113,8 @@ update instruction files as part of the same change.
 - Use `toml_edit` for format-preserving TOML edits (add-label)
 - Use `std::process::Command` for git operations (not `git2`)
 - Use `regex` + `once_cell::Lazy` for compiled regex patterns
-- Keep sync, draft, collab, contact logic in separate modules
-- Do not commit `.env`, `accounts.toml`, `contacts.toml`, `CLAUDE.local.md` / `AGENTS.local.md`, or `correspondence`
+- Keep sync, draft, mailbox, contact logic in separate modules
+- Do not commit `.env`, `.corrkit.toml`, `corrkit.toml`, `accounts.toml`, `contacts.toml`, `CLAUDE.local.md` / `AGENTS.local.md`, or `correspondence`
 - Never bump versions automatically — the user will bump versions explicitly
 - Commits that include a version change should include the version number in the commit message
 - Use `BREAKING CHANGE:` prefix in VERSIONS.md entries for incompatible changes

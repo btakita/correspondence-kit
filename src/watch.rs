@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use crate::accounts::{load_accounts_or_env, load_watch_config, resolve_password};
-use crate::config::collaborator::{collab_dir, load_collaborators};
+use crate::config::corrkit_config;
 use crate::resolve;
 use crate::sync::imap_sync::sync_account;
 use crate::sync::types::SyncState;
@@ -84,31 +84,31 @@ fn save_state(state: &SyncState) {
     }
 }
 
-fn sync_collaborators() {
-    let collabs = match load_collaborators(None) {
-        Ok(c) => c,
-        Err(_) => return,
+fn sync_mailboxes() {
+    let config = match corrkit_config::try_load_config(None) {
+        Some(c) => c,
+        None => return,
     };
-    for (name, collab) in &collabs {
-        let sub_path = collab_dir(collab);
-        if !sub_path.exists() {
+    for name in config.mailboxes.keys() {
+        let mb_path = resolve::mailbox_dir(name);
+        if !mb_path.exists() || !mb_path.join(".git").exists() {
             continue;
         }
         let output = std::process::Command::new("git")
             .arg("-C")
-            .arg(sub_path.to_string_lossy().as_ref())
+            .arg(mb_path.to_string_lossy().as_ref())
             .arg("status")
             .arg("--porcelain")
             .output();
         if let Ok(out) = output {
             if !String::from_utf8_lossy(&out.stdout).trim().is_empty() {
-                let _ = crate::collab::sync::sync_one(name);
+                let _ = crate::mailbox::sync::sync_one(name);
             }
         }
     }
 }
 
-/// One sync + 'for sync' cycle. Returns count of labels with new messages.
+/// One sync + mailbox sync cycle. Returns count of labels with new messages.
 fn poll_once(notify_enabled: bool) -> usize {
     let accounts = match load_accounts_or_env(None) {
         Ok(a) => a,
@@ -156,7 +156,7 @@ fn poll_once(notify_enabled: bool) -> usize {
 
     if new_count > 0 {
         println!("\n{} label(s) with new messages", new_count);
-        sync_collaborators();
+        sync_mailboxes();
         if notify_enabled {
             notify(
                 "corrkit",

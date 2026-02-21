@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 
 use super::markdown::{parse_thread_markdown, thread_to_markdown};
 use super::types::{AccountSyncState, LabelState, Message, SyncState, Thread};
-use crate::config::collaborator;
+use crate::config::corrkit_config;
 use crate::resolve;
 use crate::util::{slugify, thread_key_from_subject};
 
@@ -195,33 +195,36 @@ pub fn merge_message_to_file(
     Ok(Some(file_path))
 }
 
-/// Build label->output_dir map from collaborators.toml.
-fn build_label_routes(account_name: &str) -> std::collections::HashMap<String, PathBuf> {
-    let mut routes = std::collections::HashMap::new();
-    let collabs = match collaborator::load_collaborators(None) {
-        Ok(c) => c,
-        Err(_) => return routes,
+/// Build label→output_dirs map from .corrkit.toml [routing].
+///
+/// Fan-out: one label can route to multiple mailbox directories.
+/// Supports `account:label` syntax for per-account binding.
+fn build_label_routes(account_name: &str) -> std::collections::HashMap<String, Vec<PathBuf>> {
+    let mut routes: std::collections::HashMap<String, Vec<PathBuf>> = std::collections::HashMap::new();
+    let config = match corrkit_config::try_load_config(None) {
+        Some(c) => c,
+        None => return routes,
     };
-    for collab in collabs.values() {
-        let cdir = collaborator::collab_dir(collab);
-        for label in &collab.labels {
-            if label.contains(':') {
-                let parts: Vec<&str> = label.splitn(2, ':').collect();
-                let label_account = parts[0];
-                let label_name = parts[1];
-                if !account_name.is_empty() && label_account != account_name {
-                    continue;
-                }
-                routes.insert(label_name.to_string(), cdir.join("conversations"));
-            } else {
-                if !account_name.is_empty()
-                    && !collab.account.is_empty()
-                    && collab.account != account_name
-                {
-                    continue;
-                }
-                routes.insert(label.clone(), cdir.join("conversations"));
+    let data_dir = resolve::data_dir();
+    for (label_key, mailbox_paths) in &config.routing {
+        if label_key.contains(':') {
+            let parts: Vec<&str> = label_key.splitn(2, ':').collect();
+            let label_account = parts[0];
+            let label_name = parts[1];
+            if !account_name.is_empty() && label_account != account_name {
+                continue;
             }
+            let dirs: Vec<PathBuf> = mailbox_paths
+                .iter()
+                .map(|p| data_dir.join(p).join("conversations"))
+                .collect();
+            routes.entry(label_name.to_string()).or_default().extend(dirs);
+        } else {
+            let dirs: Vec<PathBuf> = mailbox_paths
+                .iter()
+                .map(|p| data_dir.join(p).join("conversations"))
+                .collect();
+            routes.entry(label_key.clone()).or_default().extend(dirs);
         }
     }
     routes
@@ -304,8 +307,11 @@ pub fn sync_account(
     let mut session = connect_imap(host, port, starttls, user, password)?;
 
     for label in &all_labels {
-        let shared_dir = routes.get(label);
-        let out_dir = shared_dir.cloned().unwrap_or_else(|| base_dir.clone());
+        // Collect all output dirs: base + any fan-out routes
+        let mut out_dirs = vec![base_dir.clone()];
+        if let Some(dirs) = routes.get(label) {
+            out_dirs.extend(dirs.iter().cloned());
+        }
 
         sync_label(
             &mut session,
@@ -314,16 +320,19 @@ pub fn sync_account(
             acct_state,
             full,
             sync_days,
-            &out_dir,
+            &out_dirs,
             &mut touched,
         )?;
     }
 
-    session.logout()?;
+    // Logout errors are non-fatal — data is already fetched and merged.
+    // Some servers (e.g. ProtonMail Bridge) return responses the imap
+    // crate cannot parse during logout.
+    let _ = session.logout();
     Ok(())
 }
 
-/// Sync a single IMAP label/folder.
+/// Sync a single IMAP label/folder, writing to multiple output dirs (fan-out).
 #[allow(clippy::too_many_arguments)]
 fn sync_label(
     session: &mut ImapSession,
@@ -332,7 +341,7 @@ fn sync_label(
     acct_state: &mut AccountSyncState,
     full: bool,
     sync_days: u32,
-    out_dir: &Path,
+    out_dirs: &[PathBuf],
     touched: &mut Option<&mut HashSet<PathBuf>>,
 ) -> Result<()> {
     println!("Syncing label: {}", label_name);
@@ -443,11 +452,13 @@ fn sync_label(
             body,
         };
 
-        let file_path =
-            merge_message_to_file(out_dir, label_name, account_name, &message, &thread_key)?;
-        if let Some(ref mut touched_set) = touched {
-            if let Some(ref fp) = file_path {
-                touched_set.insert(fp.clone());
+        for out_dir in out_dirs {
+            let file_path =
+                merge_message_to_file(out_dir, label_name, account_name, &message, &thread_key)?;
+            if let Some(ref mut touched_set) = touched {
+                if let Some(ref fp) = file_path {
+                    touched_set.insert(fp.clone());
+                }
             }
         }
 

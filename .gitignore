@@ -1,4 +1,6 @@
 .env
+.corrkit.toml
+corrkit.toml
 accounts.toml
 contacts.toml
 AGENTS.local.md

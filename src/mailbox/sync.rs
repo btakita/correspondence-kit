@@ -1,10 +1,10 @@
-//! Sync shared collaborator submodules: pull changes, push updates.
+//! Sync shared mailboxes: pull changes, push updates.
 
 use anyhow::Result;
 use std::path::Path;
 use std::process::Command;
 
-use crate::config::collaborator::{collab_dir, load_collaborators};
+use crate::config::corrkit_config;
 use crate::resolve;
 
 fn run_git(args: &[&str]) -> (String, String, i32) {
@@ -20,8 +20,8 @@ fn run_git(args: &[&str]) -> (String, String, i32) {
     (stdout, stderr, code)
 }
 
-fn submodule_status(name: &str, sub_path: &Path) {
-    let sp = sub_path.to_string_lossy().to_string();
+fn mailbox_status(name: &str, mb_path: &Path) {
+    let sp = mb_path.to_string_lossy().to_string();
     run_git(&["git", "-C", &sp, "fetch"]);
 
     let (incoming, _, inc_code) =
@@ -54,31 +54,33 @@ fn submodule_status(name: &str, sub_path: &Path) {
     }
 }
 
-/// Full sync for one collaborator submodule.
-pub fn sync_one(name: &str) -> Result<()> {
-    let collabs = load_collaborators(None)?;
-    let collab = match collabs.get(name) {
-        Some(c) => c,
-        None => {
-            println!("  {}: not found in collaborators.toml -- skipping", name);
-            return Ok(());
-        }
-    };
+/// Check if a directory is a git repo (submodule or standalone).
+fn is_git_repo(path: &Path) -> bool {
+    // .git file (submodule) or .git directory (standalone repo)
+    path.join(".git").exists()
+}
 
-    let sub_path = collab_dir(collab);
-    if !sub_path.exists() {
+/// Full sync for one mailbox.
+pub fn sync_one(name: &str) -> Result<()> {
+    let mb_path = resolve::mailbox_dir(name);
+    if !mb_path.exists() {
         println!(
-            "  {}: submodule not found at {} -- skipping",
+            "  {}: mailbox not found at {} -- skipping",
             name,
-            sub_path.display()
+            mb_path.display()
         );
         return Ok(());
     }
 
-    println!("Syncing {}...", name);
-    let sp = sub_path.to_string_lossy().to_string();
+    if !is_git_repo(&mb_path) {
+        println!("  {}: plain directory -- skipping git sync", name);
+        return Ok(());
+    }
 
-    // Pull collaborator's changes
+    println!("Syncing {}...", name);
+    let sp = mb_path.to_string_lossy().to_string();
+
+    // Pull changes
     let (stdout, _stderr, code) = run_git(&["git", "-C", &sp, "pull", "--rebase"]);
     if code == 0 {
         if !stdout.contains("Already up to date") {
@@ -90,12 +92,12 @@ pub fn sync_one(name: &str) -> Result<()> {
 
     // Copy voice.md if root copy is newer
     let voice_file = resolve::voice_md();
-    let sub_voice = sub_path.join("voice.md");
+    let mb_voice = mb_path.join("voice.md");
     if voice_file.exists() {
-        let should_copy = if sub_voice.exists() {
+        let should_copy = if mb_voice.exists() {
             let root_mtime = voice_file.metadata().ok().and_then(|m| m.modified().ok());
-            let sub_mtime = sub_voice.metadata().ok().and_then(|m| m.modified().ok());
-            match (root_mtime, sub_mtime) {
+            let mb_mtime = mb_voice.metadata().ok().and_then(|m| m.modified().ok());
+            match (root_mtime, mb_mtime) {
                 (Some(r), Some(s)) => r > s,
                 _ => true,
             }
@@ -103,7 +105,7 @@ pub fn sync_one(name: &str) -> Result<()> {
             true
         };
         if should_copy {
-            std::fs::copy(&voice_file, &sub_voice)?;
+            std::fs::copy(&voice_file, &mb_voice)?;
             println!("  Updated voice.md");
         }
     }
@@ -137,21 +139,26 @@ pub fn sync_one(name: &str) -> Result<()> {
     Ok(())
 }
 
-/// corrkit for sync [NAME]
+/// corrkit mailbox sync [NAME]
 pub fn run(name: Option<&str>) -> Result<()> {
-    let collabs = load_collaborators(None)?;
-    if collabs.is_empty() {
-        println!("No collaborators configured in collaborators.toml");
+    let config = corrkit_config::try_load_config(None);
+    let mailbox_names: Vec<String> = config
+        .as_ref()
+        .map(|c| c.mailboxes.keys().cloned().collect())
+        .unwrap_or_default();
+
+    if mailbox_names.is_empty() {
+        println!("No mailboxes configured in .corrkit.toml");
         return Ok(());
     }
 
     let names: Vec<String> = if let Some(n) = name {
-        if !collabs.contains_key(n) {
-            anyhow::bail!("Unknown collaborator: {}", n);
+        if !mailbox_names.contains(&n.to_string()) {
+            anyhow::bail!("Unknown mailbox: {}", n);
         }
         vec![n.to_string()]
     } else {
-        collabs.keys().cloned().collect()
+        mailbox_names
     };
 
     for n in &names {
@@ -161,21 +168,30 @@ pub fn run(name: Option<&str>) -> Result<()> {
     Ok(())
 }
 
-/// corrkit for status
+/// corrkit mailbox status
 pub fn status() -> Result<()> {
-    let collabs = load_collaborators(None)?;
-    if collabs.is_empty() {
-        println!("No collaborators configured in collaborators.toml");
+    let config = corrkit_config::try_load_config(None);
+    let mailbox_names: Vec<String> = config
+        .as_ref()
+        .map(|c| c.mailboxes.keys().cloned().collect())
+        .unwrap_or_default();
+
+    if mailbox_names.is_empty() {
+        println!("No mailboxes configured in .corrkit.toml");
         return Ok(());
     }
 
-    println!("Collaborator status:");
-    for (name, collab) in &collabs {
-        let sub_path = collab_dir(collab);
-        if sub_path.exists() {
-            submodule_status(name, &sub_path);
+    println!("Mailbox status:");
+    for name in &mailbox_names {
+        let mb_path = resolve::mailbox_dir(name);
+        if mb_path.exists() {
+            if is_git_repo(&mb_path) {
+                mailbox_status(name, &mb_path);
+            } else {
+                println!("  {}: plain directory", name);
+            }
         } else {
-            println!("  {}: submodule not found", name);
+            println!("  {}: not found", name);
         }
     }
 

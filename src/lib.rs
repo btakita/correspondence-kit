@@ -1,11 +1,12 @@
 pub mod accounts;
 pub mod app_config;
 pub mod cli;
-pub mod collab;
 pub mod config;
 pub mod contact;
 pub mod draft;
 pub mod init;
+pub mod mailbox;
+pub mod migrate;
 pub mod resolve;
 pub mod skill;
 pub mod spaces;

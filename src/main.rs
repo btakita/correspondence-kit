@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
 
-use corrkit::cli::{Cli, CollabCommands, Commands};
+use corrkit::cli::{Cli, MailboxCommands, Commands};
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -60,32 +60,45 @@ fn main() -> Result<()> {
         Commands::AuditDocs => corrkit::audit_docs::run(),
         Commands::Help { filter } => corrkit::help::run(filter.as_deref()),
         Commands::FindUnanswered { from_name } => {
-            corrkit::collab::find_unanswered::run(&from_name)
+            corrkit::mailbox::find_unanswered::run(&from_name)
         }
-        Commands::ValidateDraft { files } => corrkit::collab::validate_draft::run(&files),
-        Commands::Collab(cmd) => match cmd {
-            CollabCommands::Add {
-                github_user,
-                labels,
+        Commands::ValidateDraft { files } => corrkit::mailbox::validate_draft::run(&files),
+        Commands::Mailbox(cmd) => match cmd {
+            MailboxCommands::Add {
                 name,
+                labels,
+                display_name,
+                github,
+                github_user,
                 pat,
                 public,
                 account,
                 org,
-            } => corrkit::collab::add::run(&github_user, &labels, &name, pat, public, &account, &org),
-            CollabCommands::Sync { name } => corrkit::collab::sync::run(name.as_deref()),
-            CollabCommands::Status => corrkit::collab::sync::status(),
-            CollabCommands::Remove { name, delete_repo } => {
-                corrkit::collab::remove::run(&name, delete_repo)
+            } => corrkit::mailbox::add::run(
+                &name,
+                &labels,
+                &display_name,
+                github,
+                &github_user,
+                pat,
+                public,
+                &account,
+                &org,
+            ),
+            MailboxCommands::Sync { name } => corrkit::mailbox::sync::run(name.as_deref()),
+            MailboxCommands::Status => corrkit::mailbox::sync::status(),
+            MailboxCommands::Remove { name, delete_repo } => {
+                corrkit::mailbox::remove::run(&name, delete_repo)
             }
-            CollabCommands::Rename {
+            MailboxCommands::Rename {
                 old_name,
                 new_name,
                 rename_repo,
-            } => corrkit::collab::rename::run(&old_name, &new_name, rename_repo),
-            CollabCommands::Reset { name, no_sync } => {
-                corrkit::collab::reset::run(name.as_deref(), no_sync)
+            } => corrkit::mailbox::rename::run(&old_name, &new_name, rename_repo),
+            MailboxCommands::Reset { name, no_sync } => {
+                corrkit::mailbox::reset::run(name.as_deref(), no_sync)
             }
         },
+        Commands::Migrate => corrkit::migrate::run(),
     }
 }

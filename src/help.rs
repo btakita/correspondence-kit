@@ -16,16 +16,17 @@ const COMMANDS: &[(&str, &str)] = &[
     ("find-unanswered [--from NAME]", "Find threads awaiting a reply"),
     ("validate-draft FILE [FILE...]", "Validate draft markdown files"),
     ("audit-docs", "Audit instruction files"),
+    ("migrate", "Migrate from accounts.toml to .corrkit.toml"),
     ("help", "Show this reference"),
 ];
 
-const COLLAB_COMMANDS: &[(&str, &str)] = &[
-    ("collab add NAME --label LABEL", "Add a collaborator"),
-    ("collab sync [NAME]", "Push/pull shared submodules"),
-    ("collab status", "Check for pending changes"),
-    ("collab remove NAME [--delete-repo]", "Remove a collaborator"),
-    ("collab rename OLD NEW", "Rename a collaborator directory"),
-    ("collab reset [NAME] [--no-sync]", "Pull, regenerate templates, commit & push"),
+const MAILBOX_COMMANDS: &[(&str, &str)] = &[
+    ("mailbox add NAME --label LABEL", "Add a mailbox (--github for shared repo)"),
+    ("mailbox sync [NAME]", "Push/pull shared mailboxes"),
+    ("mailbox status", "Check for pending changes"),
+    ("mailbox remove NAME [--delete-repo]", "Remove a mailbox"),
+    ("mailbox rename OLD NEW", "Rename a mailbox"),
+    ("mailbox reset [NAME] [--no-sync]", "Pull, regenerate templates, commit & push"),
 ];
 
 const DEV_COMMANDS: &[(&str, &str)] = &[
@@ -39,7 +40,7 @@ pub fn run(filter: Option<&str>) -> Result<()> {
         if filter != "--dev" {
             let all_cmds: Vec<(&str, &str)> = COMMANDS
                 .iter()
-                .chain(COLLAB_COMMANDS.iter())
+                .chain(MAILBOX_COMMANDS.iter())
                 .chain(DEV_COMMANDS.iter())
                 .copied()
                 .collect();
@@ -59,8 +60,8 @@ pub fn run(filter: Option<&str>) -> Result<()> {
     println!("corrkit commands\n");
     print_table(COMMANDS);
 
-    println!("\ncollaborator commands\n");
-    print_table(COLLAB_COMMANDS);
+    println!("\nmailbox commands (alias: mb)\n");
+    print_table(MAILBOX_COMMANDS);
 
     if filter == Some("--dev") || filter.is_none() {
         println!("\ndev commands\n");

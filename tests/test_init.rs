@@ -62,15 +62,18 @@ fn test_init_creates_directory_structure() {
     assert!(data_dir.join("conversations").join(".gitkeep").exists());
     assert!(data_dir.join("drafts").join(".gitkeep").exists());
     assert!(data_dir.join("contacts").join(".gitkeep").exists());
-    // Config files at project root
-    assert!(path.join("accounts.toml").exists());
-    assert!(path.join("collaborators.toml").exists());
+    // Config at project root
+    assert!(path.join(".corrkit.toml").exists());
     assert!(path.join("contacts.toml").exists());
     assert!(path.join("voice.md").exists());
+    // No collaborators.toml (removed)
+    assert!(!path.join("collaborators.toml").exists());
+    // No accounts.toml (replaced by .corrkit.toml)
+    assert!(!path.join("accounts.toml").exists());
 }
 
 #[test]
-fn test_init_accounts_toml_content() {
+fn test_init_corrkit_toml_content() {
     let tmp = TempDir::new().unwrap();
     let path = tmp.path().join("initdata");
 
@@ -81,15 +84,15 @@ fn test_init_accounts_toml_content() {
     )
     .unwrap();
 
-    let accounts_path = path.join("accounts.toml");
-    let accounts = load_accounts(Some(&accounts_path)).unwrap();
+    let config_path = path.join(".corrkit.toml");
+    let accounts = load_accounts(Some(&config_path)).unwrap();
     assert!(accounts.contains_key("default"));
     let acct = accounts.get("default").unwrap();
     assert_eq!(acct.provider, "gmail");
     assert_eq!(acct.user, "alice@gmail.com");
     assert!(acct.default);
 
-    let owner = load_owner(Some(&accounts_path)).unwrap();
+    let owner = load_owner(Some(&config_path)).unwrap();
     assert_eq!(owner.github_user, "alicegh");
     assert_eq!(owner.name, "Alice");
 }
@@ -105,8 +108,8 @@ fn test_init_with_custom_provider() {
     )
     .unwrap();
 
-    let accounts_path = path.join("accounts.toml");
-    let accounts = load_accounts(Some(&accounts_path)).unwrap();
+    let config_path = path.join(".corrkit.toml");
+    let accounts = load_accounts(Some(&config_path)).unwrap();
     let acct = accounts.get("default").unwrap();
     assert_eq!(acct.provider, "protonmail-bridge");
     assert_eq!(acct.user, "user@proton.me");
@@ -124,8 +127,8 @@ fn test_init_labels_parsing() {
     )
     .unwrap();
 
-    let accounts_path = path.join("accounts.toml");
-    let accounts = load_accounts(Some(&accounts_path)).unwrap();
+    let config_path = path.join(".corrkit.toml");
+    let accounts = load_accounts(Some(&config_path)).unwrap();
     let acct = accounts.get("default").unwrap();
     assert_eq!(acct.labels.len(), 3);
     assert!(acct.labels.contains(&"inbox".to_string()));
@@ -138,7 +141,7 @@ fn test_init_force_overwrites() {
     let tmp = TempDir::new().unwrap();
     let path = tmp.path().join("forcedata");
     std::fs::create_dir_all(&path).unwrap();
-    std::fs::write(path.join("accounts.toml"), "# old config").unwrap();
+    std::fs::write(path.join(".corrkit.toml"), "# old config").unwrap();
 
     run_init_isolated(
         &tmp, &path, "new@example.com", "gmail",
@@ -147,31 +150,9 @@ fn test_init_force_overwrites() {
     )
     .unwrap();
 
-    let content = std::fs::read_to_string(path.join("accounts.toml")).unwrap();
+    let content = std::fs::read_to_string(path.join(".corrkit.toml")).unwrap();
     assert!(content.contains("new@example.com"));
     assert!(!content.contains("# old config"));
-}
-
-#[test]
-fn test_init_preserves_existing_config_files() {
-    let tmp = TempDir::new().unwrap();
-    let path = tmp.path().join("preservedata");
-    std::fs::create_dir_all(&path).unwrap();
-    std::fs::write(
-        path.join("collaborators.toml"),
-        "[alex]\nlabels = [\"for-alex\"]\n",
-    )
-    .unwrap();
-
-    run_init_isolated(
-        &tmp, &path, "user@example.com", "gmail",
-        "", "correspondence", "", "",
-        "test-init-preserve", true,
-    )
-    .unwrap();
-
-    let content = std::fs::read_to_string(path.join("collaborators.toml")).unwrap();
-    assert!(content.contains("alex"));
 }
 
 #[test]
@@ -186,7 +167,7 @@ fn test_init_tilde_expansion() {
     )
     .unwrap();
 
-    assert!(path.join("accounts.toml").exists());
+    assert!(path.join(".corrkit.toml").exists());
 }
 
 #[test]
@@ -201,8 +182,8 @@ fn test_init_empty_labels() {
     )
     .unwrap();
 
-    let accounts_path = path.join("accounts.toml");
-    let accounts = load_accounts(Some(&accounts_path)).unwrap();
+    let config_path = path.join(".corrkit.toml");
+    let accounts = load_accounts(Some(&config_path)).unwrap();
     let acct = accounts.get("default").unwrap();
     assert!(acct.labels.is_empty());
 }

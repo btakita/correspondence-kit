@@ -47,18 +47,18 @@ cargo install --path .
 corrkit init --user you@gmail.com
 ```
 
-This creates `~/Documents/correspondence` with directory structure, `accounts.toml`,
-and empty config files. Edit `accounts.toml` with credentials, then run `corrkit sync`.
+This creates `~/Documents/correspondence` with directory structure, `.corrkit.toml`,
+and empty config files. Edit `.corrkit.toml` with credentials, then run `corrkit sync`.
 
 **Developer setup (from repo checkout):**
 ```sh
-cp accounts.toml.example accounts.toml   # configure your email accounts
+cp .corrkit.toml.example .corrkit.toml   # configure your email accounts
 cargo build
 ```
 
 ### Account configuration
 
-Define email accounts in `accounts.toml` with provider presets:
+Define email accounts in `.corrkit.toml` with provider presets:
 
 ```toml
 [accounts.personal]
@@ -97,7 +97,7 @@ Provider presets fill in IMAP/SMTP connection defaults:
 Any preset value can be overridden per-account. Credential resolution: `password` (inline)
 or `password_cmd` (shell command, e.g. `pass email/personal`).
 
-**Backward compat**: If no `accounts.toml` exists, falls back to `.env` GMAIL_* vars.
+**Backward compat**: If no `.corrkit.toml` exists, falls back to `.env` GMAIL_* vars.
 
 ### Legacy `.env` configuration
 
@@ -129,12 +129,13 @@ corrkit push-draft correspondence/drafts/FILE.md # Save a draft via IMAP
 corrkit push-draft correspondence/drafts/FILE.md --send  # Send via SMTP
 corrkit add-label LABEL --account NAME   # Add a label to an account's sync config
 corrkit contact-add NAME --email EMAIL    # Add a contact with context docs
-corrkit collab add NAME --label LABEL         # Add a collaborator
-corrkit collab sync [NAME]                    # Push/pull shared submodules
-corrkit collab status                         # Check for pending changes
-corrkit collab remove NAME                    # Remove a collaborator
-corrkit collab rename OLD NEW                 # Rename a collaborator directory
-corrkit collab reset [NAME]                   # Pull, regenerate templates, commit & push
+corrkit mailbox add NAME --label LABEL        # Add a mailbox
+corrkit mailbox sync [NAME]                   # Push/pull shared mailboxes
+corrkit mailbox status                        # Check mailbox status
+corrkit mailbox remove NAME                   # Remove a mailbox
+corrkit mailbox rename OLD NEW                # Rename a mailbox
+corrkit mailbox reset [NAME]                  # Regenerate mailbox templates
+corrkit migrate                               # Migrate old config to .corrkit.toml
 corrkit find-unanswered                   # Find threads awaiting a reply
 corrkit validate-draft FILE               # Validate draft markdown files
 corrkit watch                             # Poll IMAP and sync on an interval
@@ -162,7 +163,7 @@ corrkit spaces
 
 # Use a specific space for any command
 corrkit --space work sync
-corrkit --space personal collab status
+corrkit --space personal mailbox status
 ```
 
 Spaces are stored in `~/.config/corrkit/config.toml` (Linux), `~/Library/Application Support/corrkit/config.toml` (macOS), or `%APPDATA%/corrkit/config.toml` (Windows). The first space added becomes the default. With one space configured, `--space` is optional.
@@ -185,6 +186,8 @@ make init-python                  # Set up Python venv for wrapper development
 
 ```
 .env
+.corrkit.toml
+corrkit.toml
 accounts.toml
 contacts.toml
 CLAUDE.local.md
@@ -260,7 +263,7 @@ the directory layout — new messages merge into the same directory with their s
 
 ### Draft format
 
-Drafts live in `correspondence/drafts/` (private) or `correspondence/collabs/{gh-user}/to/drafts/` (collaborator).
+Drafts live in `correspondence/drafts/` (private) or `correspondence/mailboxes/{name}/drafts/` (collaborator).
 Filename convention: `[YYYY-MM-DD]-[slug].md`.
 
 ```markdown
@@ -270,7 +273,7 @@ Filename convention: `[YYYY-MM-DD]-[slug].md`.
 **CC**: (optional)
 **Status**: draft
 **Author**: brian
-**Account**: (optional — account name from accounts.toml, e.g. "personal")
+**Account**: (optional — account name from .corrkit.toml, e.g. "personal")
 **From**: (optional — email address, used to resolve account if Account not set)
 **In-Reply-To**: (optional — message ID)
 
@@ -288,12 +291,12 @@ Most AI email tools (OpenClaw, etc.) require OAuth access to your entire account
 Correspondence-kit inverts this. You control what any agent or collaborator can see:
 
 1. **You label threads in your email client.** Only threads you explicitly label get synced locally.
-2. **Labels route to scoped views.** Each collaborator/agent gets a submodule containing only the threads labeled for them — nothing else.
-3. **Credentials never leave your machine.** `accounts.toml` is gitignored. Agents draft replies in markdown; only you can push to your email.
+2. **Labels route to scoped views.** Each mailbox gives the collaborator/agent a directory containing only the threads labeled for them — nothing else.
+3. **Credentials never leave your machine.** `.corrkit.toml` is gitignored. Agents draft replies in markdown; only you can push to your email.
 
-An agent added with `corrkit collab add assistant --label for-assistant` can only see threads you've tagged `for-assistant`. It can't see your other conversations, your contacts, or other collaborators' repos. If the agent is compromised, the blast radius is limited to the threads you chose to share.
+An agent added with `corrkit mailbox add assistant --label for-assistant` can only see threads you've tagged `for-assistant`. It can't see your other conversations, your contacts, or other collaborators' repos. If the agent is compromised, the blast radius is limited to the threads you chose to share.
 
-This works across multiple email accounts — Gmail, Protonmail, self-hosted — each with its own labels and routing rules, all funneling through the same scoped collaborator model.
+This works across multiple email accounts — Gmail, Protonmail, self-hosted — each with its own labels and routing rules, all funneling through the same scoped mailbox model.
 
 ## Contacts
 
@@ -328,42 +331,45 @@ account = "personal"
 
 Copy `contacts.toml.example` to `contacts.toml` to get started.
 
-## Collaborators
+## Mailboxes
 
-Share specific email threads with people or AI agents via scoped GitHub repos.
+Share specific email threads with people or AI agents via scoped directories or GitHub repos.
 
-### Adding a collaborator
+### Adding a mailbox
 
 ```sh
-# Human collaborator (invited via GitHub)
-corrkit collab add alex-gh --label for-alex --name "Alex"
+# Plain directory (default)
+corrkit mailbox add alex --label for-alex --name "Alex"
+
+# With GitHub submodule
+corrkit mailbox add alex --label for-alex --name "Alex" --github
 
 # AI agent (uses a PAT instead of GitHub invite)
-corrkit collab add assistant-bot --label for-assistant --pat
+corrkit mailbox add assistant-bot --label for-assistant --pat
 
 # Bind all labels to one account
-corrkit collab add alex-gh --label for-alex --account personal
+corrkit mailbox add alex --label for-alex --account personal
 
 # Per-label account scoping (proton-dev account, INBOX folder)
-# Use account:label syntax in collaborators.toml directly
+# Use account:label syntax in .corrkit.toml directly
 ```
 
-This creates a private GitHub repo (`{owner}/to-{gh-user}`), initializes it with instructions, and adds it as a submodule under `collabs/{gh-user}/to/`.
+This creates a scoped directory under `mailboxes/{name}/`. With `--github`, it also creates a private GitHub repo (`{owner}/to-{name}`) and adds it as a submodule.
 
 ### Daily workflow
 
 ```sh
-# 1. Sync emails -- shared labels route to collabs/{gh-user}/to/conversations/
+# 1. Sync emails -- shared labels route to mailboxes/{name}/conversations/
 corrkit sync
 
-# 2. Push synced threads to collaborator repos & pull their drafts
-corrkit collab sync
+# 2. Push synced threads to mailbox repos & pull their drafts
+corrkit mailbox sync
 
 # 3. Check what's pending without pushing
-corrkit collab status
+corrkit mailbox status
 
 # 4. Review a collaborator's draft and push it as an email draft
-corrkit push-draft collabs/alex-gh/to/drafts/2026-02-19-reply.md
+corrkit push-draft mailboxes/alex/drafts/2026-02-19-reply.md
 ```
 
 ### Unattended sync with `corrkit watch`
@@ -378,7 +384,7 @@ corrkit watch
 corrkit watch --interval 60
 ```
 
-Configure in `accounts.toml`:
+Configure in `.corrkit.toml`:
 
 ```toml
 [watch]
@@ -407,22 +413,22 @@ tail -f /tmp/corrkit-watch.log          # view logs
 ### What collaborators can do
 
 - Read conversations labeled for them
-- Draft replies in `collabs/{gh-user}/to/drafts/` following the format in AGENTS.md
+- Draft replies in `mailboxes/{name}/drafts/` following the format in AGENTS.md
 - Run `corrkit find-unanswered` and `corrkit validate-draft` in their repo
 - Push changes to their shared repo
 
 ### What only you can do
 
 - Sync new emails (`corrkit sync`)
-- Push synced threads to collaborator repos (`corrkit collab sync`)
+- Push synced threads to mailbox repos (`corrkit mailbox sync`)
 - Send emails (`corrkit push-draft --send`)
 - Change draft Status to `sent`
 
-### Removing a collaborator
+### Removing a mailbox
 
 ```sh
-corrkit collab remove alex-gh
-corrkit collab remove alex-gh --delete-repo  # also delete the GitHub repo
+corrkit mailbox remove alex
+corrkit mailbox remove alex --delete-repo  # also delete the GitHub repo
 ```
 
 ## Designed for humans and agents
@@ -441,7 +447,7 @@ and AI agents. No GUIs, no OAuth popups, no interactive prompts.
 - **Self-documenting repos.** Each shared repo ships with `AGENTS.md` (full instructions),
   `CLAUDE.md` (symlink for Claude Code), `voice.md`, and a `README.md`. A new collaborator —
   human or agent — can start contributing immediately.
-- **Templates stay current.** `corrkit collab reset` regenerates all template files in shared repos
+- **Templates stay current.** `corrkit mailbox reset` regenerates all template files in shared repos
   when the tool evolves. No manual sync of instructions across collaborators.
 
 ### Owner workflow
@@ -460,14 +466,15 @@ universal interface.
 
 ### Collaborator workflow
 
-Each collaborator — human or agent — gets a scoped git repo with:
+Each collaborator — human or agent — gets a scoped directory with:
 
 ```
-collabs/{gh-user}/to/
+mailboxes/{name}/
   AGENTS.md          # Full instructions: formats, commands, status flow
   CLAUDE.md          # Symlink for Claude Code auto-discovery
   README.md          # Quick-start guide
   voice.md           # Writing style guidelines
+  contacts/          # Per-contact context for drafting
   conversations/     # Synced threads (read-only for the collaborator)
   drafts/            # Where the collaborator writes replies
 ```

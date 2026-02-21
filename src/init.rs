@@ -21,8 +21,8 @@ fn create_dirs(data_dir: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Generate accounts.toml content.
-fn generate_accounts_toml(
+/// Generate .corrkit.toml content.
+fn generate_corrkit_toml(
     user: &str,
     provider: &str,
     password_cmd: &str,
@@ -143,9 +143,9 @@ pub fn run(
         .filter(|s| !s.is_empty())
         .collect();
 
-    let accounts_path = path.join("accounts.toml");
-    if accounts_path.exists() && !force {
-        eprintln!("accounts.toml already exists at {}", accounts_path.display());
+    let config_path = path.join(".corrkit.toml");
+    if config_path.exists() && !force {
+        eprintln!(".corrkit.toml already exists at {}", config_path.display());
         eprintln!("Use --force to overwrite.");
         std::process::exit(1);
     }
@@ -157,18 +157,17 @@ pub fn run(
         data_dir.display()
     );
 
-    // 3. Generate config files at project root
+    // 3. Generate .corrkit.toml at project root
     let content =
-        generate_accounts_toml(user, provider, password_cmd, &labels, github_user, name);
-    std::fs::write(&accounts_path, &content)?;
-    println!("Created {}", accounts_path.display());
+        generate_corrkit_toml(user, provider, password_cmd, &labels, github_user, name);
+    std::fs::write(&config_path, &content)?;
+    println!("Created {}", config_path.display());
 
-    for filename in &["collaborators.toml", "contacts.toml"] {
-        let p = path.join(filename);
-        if !p.exists() {
-            std::fs::write(&p, "")?;
-            println!("Created {}", p.display());
-        }
+    // contacts.toml (still separate)
+    let contacts_path = path.join("contacts.toml");
+    if !contacts_path.exists() {
+        std::fs::write(&contacts_path, "")?;
+        println!("Created {}", contacts_path.display());
     }
 
     // 4. Install voice.md
@@ -198,7 +197,7 @@ pub fn run(
         println!();
         println!("Gmail setup:");
         println!("  Option A: App password \u{2014} https://myaccount.google.com/apppasswords");
-        println!("    Add password_cmd = \"pass email/personal\" to accounts.toml");
+        println!("    Add password_cmd = \"pass email/personal\" to .corrkit.toml");
         println!("  Option B: OAuth \u{2014} run 'corrkit sync-auth' after placing credentials.json");
     }
 
@@ -212,12 +211,12 @@ pub fn run(
     if !sync {
         println!();
         println!("Done! Next steps:");
-        println!("  - Edit {} with your credentials", accounts_path.display());
+        println!("  - Edit {} with your credentials", config_path.display());
         if provider == "gmail" && password_cmd.is_empty() {
             println!("  - Set up app password or OAuth (see above)");
         }
         if !presets.contains_key(provider) && provider == "imap" {
-            println!("  - Add imap_host, smtp_host to accounts.toml");
+            println!("  - Add imap_host, smtp_host to .corrkit.toml");
         }
         println!("  - Run: corrkit sync");
         if !with_skill {

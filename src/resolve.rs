@@ -51,6 +51,10 @@ pub fn contacts_dir() -> PathBuf {
     data_dir().join("contacts")
 }
 
+pub fn mailbox_dir(name: &str) -> PathBuf {
+    data_dir().join("mailboxes").join(name.to_lowercase())
+}
+
 pub fn collab_to_dir(gh_user: &str) -> PathBuf {
     data_dir()
         .join("collabs")
@@ -74,6 +78,21 @@ pub fn manifest_file() -> PathBuf {
 }
 
 // --- Derived helpers: config paths ---
+
+/// Resolve .corrkit.toml path: check .corrkit.toml then corrkit.toml in config_dir().
+pub fn corrkit_toml() -> PathBuf {
+    let dir = config_dir();
+    let dotfile = dir.join(".corrkit.toml");
+    if dotfile.exists() {
+        return dotfile;
+    }
+    let plain = dir.join("corrkit.toml");
+    if plain.exists() {
+        return plain;
+    }
+    // Default to .corrkit.toml (for creation)
+    dotfile
+}
 
 pub fn accounts_toml() -> PathBuf {
     config_dir().join("accounts.toml")

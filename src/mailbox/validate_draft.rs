@@ -70,7 +70,7 @@ pub fn validate_draft(path: &Path) -> Vec<String> {
 
     if status == "draft" {
         issues.push(
-            "Warning: Status is 'draft'. Set to 'review' when ready for Brian".to_string(),
+            "Warning: Status is 'draft'. Set to 'review' when ready for review".to_string(),
         );
     }
 
@@ -93,7 +93,7 @@ pub fn validate_draft(path: &Path) -> Vec<String> {
     issues
 }
 
-/// corrkit by validate-draft FILE [FILE...]
+/// corrkit validate-draft FILE [FILE...]
 pub fn run(files: &[PathBuf]) -> Result<()> {
     let mut all_ok = true;
 

@@ -5,7 +5,7 @@ Claude Code skill for managing email correspondence using locally synced threads
 ## Prerequisites
 
 - `corrkit` installed and on PATH
-- `accounts.toml` configured with at least one email account
+- `.corrkit.toml` configured with at least one email account
 - `corrkit sync` run at least once to populate `correspondence/conversations/`
 - `voice.md` in the project root for writing style
 

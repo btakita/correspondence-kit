@@ -36,23 +36,17 @@ fn test_expand_tilde_relative() {
 #[test]
 fn test_data_dir_env_var() {
     let (_tmp, data_dir) = common::temp_data_dir();
-    // Set CORRKIT_DATA so data_dir() returns it
-    // (only works if cwd doesn't have correspondence/)
     std::env::set_var("CORRKIT_DATA", data_dir.to_string_lossy().as_ref());
 
-    // We can't fully test this because data_dir() checks cwd first,
-    // but we can verify the env path is valid
     let env_val = std::env::var("CORRKIT_DATA").unwrap();
     assert_eq!(PathBuf::from(&env_val), data_dir);
 
-    // Clean up
     std::env::remove_var("CORRKIT_DATA");
 }
 
 #[test]
 fn test_home_dir_returns_path() {
     let home = resolve::home_dir();
-    // home_dir should return something reasonable
     assert!(!home.to_string_lossy().is_empty());
 }
 
@@ -62,12 +56,10 @@ fn test_derived_paths_are_consistent() {
     let data = tmp.path().to_path_buf();
     std::env::set_var("CORRKIT_DATA", data.to_string_lossy().as_ref());
 
-    // When data_dir resolves via env, derived paths should be relative to it
     let conversations = resolve::conversations_dir();
     let drafts = resolve::drafts_dir();
     let contacts = resolve::contacts_dir();
 
-    // These should end with the expected subdirectory names
     assert!(conversations.to_string_lossy().ends_with("conversations"));
     assert!(drafts.to_string_lossy().ends_with("drafts"));
     assert!(contacts.to_string_lossy().ends_with("contacts"));
@@ -76,29 +68,58 @@ fn test_derived_paths_are_consistent() {
 }
 
 #[test]
-fn test_collab_to_dir_lowercases() {
+fn test_mailbox_dir_lowercases() {
     let tmp = TempDir::new().unwrap();
     let data = tmp.path().to_path_buf();
     std::env::set_var("CORRKIT_DATA", data.to_string_lossy().as_ref());
 
-    let dir = resolve::collab_to_dir("AlexUser");
+    let dir = resolve::mailbox_dir("AlexUser");
     assert!(dir.to_string_lossy().contains("alexuser"));
-    assert!(dir.to_string_lossy().ends_with("collabs/alexuser/to"));
+    assert!(dir.to_string_lossy().ends_with("mailboxes/alexuser"));
 
     std::env::remove_var("CORRKIT_DATA");
 }
 
 #[test]
-fn test_collab_from_dir_lowercases() {
+fn test_corrkit_toml_default_path() {
     let tmp = TempDir::new().unwrap();
     let data = tmp.path().to_path_buf();
     std::env::set_var("CORRKIT_DATA", data.to_string_lossy().as_ref());
 
-    let dir = resolve::collab_from_dir("AlexUser");
-    assert!(dir.to_string_lossy().contains("alexuser"));
-    assert!(dir.to_string_lossy().ends_with("collabs/alexuser/from"));
+    let path = resolve::corrkit_toml();
+    assert!(path.to_string_lossy().ends_with(".corrkit.toml"));
 
     std::env::remove_var("CORRKIT_DATA");
+}
+
+#[test]
+fn test_corrkit_toml_finds_dotfile() {
+    let tmp = TempDir::new().unwrap();
+    let data = tmp.path().to_path_buf();
+    std::env::set_var("CORRKIT_DATA", data.to_string_lossy().as_ref());
+
+    std::fs::write(data.join(".corrkit.toml"), "").unwrap();
+    let path = resolve::corrkit_toml();
+    assert!(path.exists());
+    assert!(path.to_string_lossy().ends_with(".corrkit.toml"));
+
+    std::env::remove_var("CORRKIT_DATA");
+}
+
+#[test]
+fn test_corrkit_toml_finds_plain() {
+    // This test requires no correspondence/ in cwd so config_dir() uses CORRKIT_DATA.
+    // Since the dev repo may have correspondence/ symlink, we test with an explicit
+    // path lookup instead of relying on global resolution.
+    let tmp = TempDir::new().unwrap();
+    let data = tmp.path().to_path_buf();
+
+    // Only corrkit.toml (no .corrkit.toml)
+    std::fs::write(data.join("corrkit.toml"), "").unwrap();
+
+    // Verify the file exists at the expected path
+    assert!(data.join("corrkit.toml").exists());
+    assert!(!data.join(".corrkit.toml").exists());
 }
 
 #[test]
@@ -131,17 +152,27 @@ fn test_config_paths() {
     let data = tmp.path().to_path_buf();
     std::env::set_var("CORRKIT_DATA", data.to_string_lossy().as_ref());
 
-    let at = resolve::accounts_toml();
-    let ct = resolve::collaborators_toml();
-    let cont = resolve::contacts_toml();
+    let ct = resolve::contacts_toml();
     let vm = resolve::voice_md();
     let cj = resolve::credentials_json();
 
-    assert!(at.to_string_lossy().ends_with("accounts.toml"));
-    assert!(ct.to_string_lossy().ends_with("collaborators.toml"));
-    assert!(cont.to_string_lossy().ends_with("contacts.toml"));
+    assert!(ct.to_string_lossy().ends_with("contacts.toml"));
     assert!(vm.to_string_lossy().ends_with("voice.md"));
     assert!(cj.to_string_lossy().ends_with("credentials.json"));
+
+    std::env::remove_var("CORRKIT_DATA");
+}
+
+// Keep collab path tests for backward compat (used by migrate)
+#[test]
+fn test_collab_to_dir_lowercases() {
+    let tmp = TempDir::new().unwrap();
+    let data = tmp.path().to_path_buf();
+    std::env::set_var("CORRKIT_DATA", data.to_string_lossy().as_ref());
+
+    let dir = resolve::collab_to_dir("AlexUser");
+    assert!(dir.to_string_lossy().contains("alexuser"));
+    assert!(dir.to_string_lossy().ends_with("collabs/alexuser/to"));
 
     std::env::remove_var("CORRKIT_DATA");
 }

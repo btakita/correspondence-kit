@@ -1,11 +1,11 @@
-//! Regenerate template files in shared collaborator repos.
+//! Regenerate template files in shared mailbox repos.
 
 use anyhow::Result;
 use std::path::Path;
 use std::process::Command;
 
 use crate::accounts::load_owner;
-use crate::config::collaborator::{collab_dir, load_collaborators, Collaborator};
+use crate::config::corrkit_config;
 use crate::resolve;
 
 use super::templates::{generate_agents_md, generate_readme_md};
@@ -21,17 +21,17 @@ fn run_git(args: &[&str]) -> (String, String, i32) {
     (stdout, stderr, code)
 }
 
-/// Regenerate template files for one collaborator.
-fn regenerate(_name: &str, display_name: &str, owner_name: &str, sub_path: &Path) -> Result<()> {
+/// Regenerate template files for one mailbox.
+fn regenerate(display_name: &str, owner_name: &str, mb_path: &Path) -> Result<()> {
     // AGENTS.md
     std::fs::write(
-        sub_path.join("AGENTS.md"),
+        mb_path.join("AGENTS.md"),
         generate_agents_md(display_name, owner_name),
     )?;
     println!("  Updated AGENTS.md");
 
     // CLAUDE.md symlink
-    let claude_md = sub_path.join("CLAUDE.md");
+    let claude_md = mb_path.join("CLAUDE.md");
     if claude_md.exists() || claude_md.is_symlink() {
         std::fs::remove_file(&claude_md)?;
     }
@@ -41,14 +41,14 @@ fn regenerate(_name: &str, display_name: &str, owner_name: &str, sub_path: &Path
 
     // README.md
     std::fs::write(
-        sub_path.join("README.md"),
+        mb_path.join("README.md"),
         generate_readme_md(display_name, owner_name),
     )?;
     println!("  Updated README.md");
 
     // .gitignore
     std::fs::write(
-        sub_path.join(".gitignore"),
+        mb_path.join(".gitignore"),
         "AGENTS.local.md\nCLAUDE.local.md\n__pycache__/\n",
     )?;
     println!("  Updated .gitignore");
@@ -56,35 +56,32 @@ fn regenerate(_name: &str, display_name: &str, owner_name: &str, sub_path: &Path
     // voice.md
     let voice_file = resolve::voice_md();
     if voice_file.exists() {
-        std::fs::copy(&voice_file, sub_path.join("voice.md"))?;
+        std::fs::copy(&voice_file, mb_path.join("voice.md"))?;
         println!("  Updated voice.md");
     }
 
     Ok(())
 }
 
-/// Pull, regenerate templates, commit, and push for one collaborator.
-fn reset_one(
-    name: &str,
-    collab: &Collaborator,
-    owner_name: &str,
-    do_sync: bool,
-) -> Result<()> {
-    let sub_path = collab_dir(collab);
-    if !sub_path.exists() {
+/// Pull, regenerate templates, commit, and push for one mailbox.
+fn reset_one(name: &str, owner_name: &str, do_sync: bool) -> Result<()> {
+    let mb_path = resolve::mailbox_dir(name);
+    if !mb_path.exists() {
         println!(
-            "  {}: submodule not found at {} -- skipping",
+            "  {}: not found at {} -- skipping",
             name,
-            sub_path.display()
+            mb_path.display()
         );
         return Ok(());
     }
 
-    println!("Resetting {}...", name);
-    let sp = sub_path.to_string_lossy().to_string();
+    let is_git = mb_path.join(".git").exists();
 
-    // 1. Pull latest
-    if do_sync {
+    println!("Resetting {}...", name);
+    let sp = mb_path.to_string_lossy().to_string();
+
+    // 1. Pull latest (only for git repos)
+    if do_sync && is_git {
         let (stdout, _, code) = run_git(&["git", "-C", &sp, "pull", "--rebase"]);
         if code == 0 {
             if !stdout.contains("Already up to date") {
@@ -96,14 +93,9 @@ fn reset_one(
     }
 
     // 2. Regenerate template files
-    let display_name = if collab.name.is_empty() {
-        name
-    } else {
-        &collab.name
-    };
-    regenerate(name, display_name, owner_name, &sub_path)?;
+    regenerate(name, owner_name, &mb_path)?;
 
-    if !do_sync {
+    if !do_sync || !is_git {
         return Ok(());
     }
 
@@ -136,21 +128,26 @@ fn reset_one(
     Ok(())
 }
 
-/// corrkit for reset [NAME] [--no-sync]
+/// corrkit mailbox reset [NAME] [--no-sync]
 pub fn run(name: Option<&str>, no_sync: bool) -> Result<()> {
-    let collabs = load_collaborators(None)?;
-    if collabs.is_empty() {
-        println!("No collaborators configured in collaborators.toml");
+    let config = corrkit_config::try_load_config(None);
+    let mailbox_names: Vec<String> = config
+        .as_ref()
+        .map(|c| c.mailboxes.keys().cloned().collect())
+        .unwrap_or_default();
+
+    if mailbox_names.is_empty() {
+        println!("No mailboxes configured in .corrkit.toml");
         return Ok(());
     }
 
     let names: Vec<String> = if let Some(n) = name {
-        if !collabs.contains_key(n) {
-            anyhow::bail!("Unknown collaborator: {}", n);
+        if !mailbox_names.contains(&n.to_string()) {
+            anyhow::bail!("Unknown mailbox: {}", n);
         }
         vec![n.to_string()]
     } else {
-        collabs.keys().cloned().collect()
+        mailbox_names
     };
 
     let owner = load_owner(None)?;
@@ -161,7 +158,7 @@ pub fn run(name: Option<&str>, no_sync: bool) -> Result<()> {
     };
 
     for n in &names {
-        reset_one(n, &collabs[n], owner_name, !no_sync)?;
+        reset_one(n, owner_name, !no_sync)?;
     }
 
     Ok(())

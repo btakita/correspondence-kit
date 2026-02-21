@@ -186,13 +186,25 @@ pub fn resolve_password(account: &Account) -> Result<String> {
     bail!("Account {:?} has no password or password_cmd", account.user)
 }
 
-const NON_ACCOUNT_KEYS: &[&str] = &["watch", "owner"];
+const NON_ACCOUNT_KEYS: &[&str] = &["watch", "owner", "routing", "mailboxes"];
 
-/// Parse accounts.toml → {name: Account} mapping.
+/// Parse accounts from .corrkit.toml or accounts.toml → {name: Account} mapping.
+///
+/// Resolution order (when path is None):
+/// 1. .corrkit.toml / corrkit.toml (new unified config)
+/// 2. accounts.toml (legacy)
 pub fn load_accounts(path: Option<&Path>) -> Result<HashMap<String, Account>> {
-    let path = path
-        .map(PathBuf::from)
-        .unwrap_or_else(resolve::accounts_toml);
+    let path = match path {
+        Some(p) => PathBuf::from(p),
+        None => {
+            let ck = resolve::corrkit_toml();
+            if ck.exists() {
+                ck
+            } else {
+                resolve::accounts_toml()
+            }
+        }
+    };
     if !path.exists() {
         return Ok(HashMap::new());
     }
@@ -268,14 +280,22 @@ pub fn load_accounts_or_env(path: Option<&Path>) -> Result<HashMap<String, Accou
     Ok(m)
 }
 
-/// Load [owner] section from accounts.toml.
+/// Load [owner] section from .corrkit.toml or accounts.toml.
 pub fn load_owner(path: Option<&Path>) -> Result<OwnerConfig> {
-    let path = path
-        .map(PathBuf::from)
-        .unwrap_or_else(resolve::accounts_toml);
+    let path = match path {
+        Some(p) => PathBuf::from(p),
+        None => {
+            let ck = resolve::corrkit_toml();
+            if ck.exists() {
+                ck
+            } else {
+                resolve::accounts_toml()
+            }
+        }
+    };
     if !path.exists() {
         bail!(
-            "accounts.toml not found at {}.\nAdd an [owner] section with github_user.",
+            "Config not found at {}.\nRun 'corrkit init' or add an [owner] section with github_user.",
             path.display()
         );
     }
@@ -285,7 +305,7 @@ pub fn load_owner(path: Option<&Path>) -> Result<OwnerConfig> {
         .get("owner")
         .ok_or_else(|| {
             anyhow::anyhow!(
-                "Missing [owner] section in accounts.toml.\nAdd: [owner]\ngithub_user = \"your-github-username\""
+                "Missing [owner] section in config.\nAdd: [owner]\ngithub_user = \"your-github-username\""
             )
         })?;
     let owner: OwnerConfig = owner_data.clone().try_into()?;
@@ -318,16 +338,24 @@ pub fn get_account_for_email(
     None
 }
 
-/// Add a label to an account's labels list in accounts.toml.
+/// Add a label to an account's labels list in .corrkit.toml or accounts.toml.
 ///
 /// Uses toml_edit for format-preserving edits.
 /// Returns Ok(true) if added, Ok(false) if already present.
 pub fn add_label_to_account(account_name: &str, label: &str, path: Option<&Path>) -> Result<bool> {
-    let path = path
-        .map(PathBuf::from)
-        .unwrap_or_else(resolve::accounts_toml);
+    let path = match path {
+        Some(p) => PathBuf::from(p),
+        None => {
+            let ck = resolve::corrkit_toml();
+            if ck.exists() {
+                ck
+            } else {
+                resolve::accounts_toml()
+            }
+        }
+    };
     if !path.exists() {
-        bail!("accounts.toml not found at {}", path.display());
+        bail!("Config not found at {}", path.display());
     }
 
     // Verify account exists and label isn't already there
@@ -371,18 +399,26 @@ pub fn add_label_to_account(account_name: &str, label: &str, path: Option<&Path>
 pub fn add_label_cmd(label: &str, account: &str) -> Result<()> {
     let added = add_label_to_account(account, label, None)?;
     if added {
-        println!("Added '{}' to account '{}' in accounts.toml", label, account);
+        println!("Added '{}' to account '{}'", label, account);
     } else {
         println!("Label '{}' already in account '{}'", label, account);
     }
     Ok(())
 }
 
-/// Load [watch] section from accounts.toml. Returns defaults if missing.
+/// Load [watch] section from .corrkit.toml or accounts.toml. Returns defaults if missing.
 pub fn load_watch_config(path: Option<&Path>) -> Result<WatchConfig> {
-    let path = path
-        .map(PathBuf::from)
-        .unwrap_or_else(resolve::accounts_toml);
+    let path = match path {
+        Some(p) => PathBuf::from(p),
+        None => {
+            let ck = resolve::corrkit_toml();
+            if ck.exists() {
+                ck
+            } else {
+                resolve::accounts_toml()
+            }
+        }
+    };
     if !path.exists() {
         return Ok(WatchConfig::default());
     }

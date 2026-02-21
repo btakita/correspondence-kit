@@ -1,9 +1,9 @@
-# Email account configuration for correspondence-kit.
-# Copy to accounts.toml and fill in your details.
+# Corrkit unified configuration.
+# Copy to .corrkit.toml and fill in your details.
 # See README.md for full documentation.
 
 [owner]
-github_user = "your-github-username"       # Required for collaborator features
+github_user = "your-github-username"       # Required for mailbox features
 name = "Your Name"                         # Display name used in shared repo templates
 
 [accounts.personal]
@@ -27,6 +27,18 @@ default = true
 # user = "user@example.com"
 # password_cmd = "pass email/selfhosted"
 # labels = ["important"]
+
+# Label routing: map labels to mailbox directories.
+# Each label can fan out to multiple mailboxes.
+# Use "account:label" syntax to scope a label to one account.
+# [routing]
+# for-alex = ["mailboxes/alex"]
+# "proton:INBOX" = ["mailboxes/proton-inbox"]
+# shared-label = ["mailboxes/alice", "mailboxes/bob"]
+
+# Mailbox configuration.
+# [mailboxes.alex]
+# auto_send = false                         # auto-send approved drafts (default: false)
 
 # [watch]
 # poll_interval = 300                       # seconds between polls (default: 300)

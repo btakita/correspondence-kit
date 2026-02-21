@@ -92,10 +92,26 @@ fn test_cli_contact_add_requires_args() {
 }
 
 #[test]
-fn test_cli_collab_add_requires_args() {
+fn test_cli_mailbox_add_requires_args() {
     let mut cmd = corrkit_cmd();
-    cmd.args(["collab", "add"]);
+    cmd.args(["mailbox", "add"]);
     cmd.assert().failure();
+}
+
+#[test]
+fn test_cli_mb_alias() {
+    let mut cmd = corrkit_cmd();
+    cmd.args(["mb", "add"]);
+    cmd.assert().failure(); // fails because no args, but proves alias works
+}
+
+#[test]
+fn test_cli_migrate_subcommand() {
+    let mut cmd = corrkit_cmd();
+    cmd.arg("migrate");
+    // Will fail because no accounts.toml in cwd, but should not panic
+    let output = cmd.output().unwrap();
+    assert!(output.status.code().is_some());
 }
 
 #[test]
@@ -123,7 +139,7 @@ fn test_cli_init_with_path() {
     cmd.assert().success();
 
     assert!(project_dir.join("correspondence/conversations").exists());
-    assert!(project_dir.join("accounts.toml").exists());
+    assert!(project_dir.join(".corrkit.toml").exists());
     assert!(project_dir.join("voice.md").exists());
 }
 
@@ -141,7 +157,7 @@ fn test_cli_sync_unknown_account() {
 
     std::fs::create_dir_all(data_dir.join("conversations")).unwrap();
     std::fs::write(
-        data_dir.join("accounts.toml"),
+        data_dir.join(".corrkit.toml"),
         r#"
 [accounts.personal]
 provider = "gmail"

@@ -2,7 +2,7 @@ use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
 #[derive(Parser)]
-#[command(name = "corrkit", version, about = "Sync email threads from IMAP to Markdown, draft replies, manage collaborators", disable_help_subcommand = true)]
+#[command(name = "corrkit", version, about = "Sync email threads from IMAP to Markdown, draft replies, manage mailboxes", disable_help_subcommand = true)]
 pub struct Cli {
     /// Use a named space from app config
     #[arg(long, global = true)]
@@ -56,7 +56,7 @@ pub enum Commands {
         #[arg(long = "space-name", default_value = "default")]
         space_name: String,
 
-        /// Overwrite existing accounts.toml
+        /// Overwrite existing .corrkit.toml
         #[arg(long)]
         force: bool,
     },
@@ -77,7 +77,7 @@ pub enum Commands {
 
     /// List IMAP folders for an account
     ListFolders {
-        /// Account name from accounts.toml
+        /// Account name from .corrkit.toml
         account: Option<String>,
     },
 
@@ -96,7 +96,7 @@ pub enum Commands {
         /// Label to add
         label: String,
 
-        /// Account name in accounts.toml
+        /// Account name in .corrkit.toml
         #[arg(long)]
         account: String,
     },
@@ -158,25 +158,36 @@ pub enum Commands {
         files: Vec<PathBuf>,
     },
 
-    /// Collaborator commands
-    #[command(subcommand)]
-    Collab(CollabCommands),
+    /// Mailbox commands
+    #[command(subcommand, alias = "mb")]
+    Mailbox(MailboxCommands),
+
+    /// Migrate from accounts.toml + collaborators.toml to .corrkit.toml
+    Migrate,
 }
 
 #[derive(Subcommand)]
-pub enum CollabCommands {
-    /// Add a new collaborator
+pub enum MailboxCommands {
+    /// Add a new mailbox
     Add {
-        /// Collaborator's GitHub username
-        github_user: String,
+        /// Mailbox name
+        name: String,
 
-        /// Gmail label(s) to share
+        /// Label(s) to route to this mailbox
         #[arg(long = "label", required = true)]
         labels: Vec<String>,
 
-        /// Display name for the collaborator
+        /// Display name for the mailbox
         #[arg(long, default_value = "")]
-        name: String,
+        display_name: String,
+
+        /// Create as a shared GitHub repo (submodule)
+        #[arg(long)]
+        github: bool,
+
+        /// GitHub username for shared repo collaborator
+        #[arg(long, default_value = "")]
+        github_user: String,
 
         /// Use PAT-based access instead of GitHub collaborator invite
         #[arg(long)]
@@ -186,7 +197,7 @@ pub enum CollabCommands {
         #[arg(long)]
         public: bool,
 
-        /// Bind collaborator labels to a specific account name
+        /// Bind mailbox labels to a specific account name
         #[arg(long, default_value = "")]
         account: String,
 
@@ -195,41 +206,41 @@ pub enum CollabCommands {
         org: String,
     },
 
-    /// Push/pull shared submodules
+    /// Push/pull shared mailboxes
     Sync {
-        /// Collaborator GitHub username (default: all)
+        /// Mailbox name (default: all)
         name: Option<String>,
     },
 
     /// Check for pending changes
     Status,
 
-    /// Remove a collaborator
+    /// Remove a mailbox
     Remove {
-        /// Collaborator GitHub username to remove
+        /// Mailbox name to remove
         name: String,
 
-        /// Also delete the GitHub repo
+        /// Also delete the GitHub repo (if shared)
         #[arg(long)]
         delete_repo: bool,
     },
 
-    /// Rename a collaborator directory
+    /// Rename a mailbox
     Rename {
-        /// Current collaborator name
+        /// Current mailbox name
         old_name: String,
 
-        /// New collaborator name
+        /// New mailbox name
         new_name: String,
 
-        /// Also rename the GitHub repo
+        /// Also rename the GitHub repo (if shared)
         #[arg(long)]
         rename_repo: bool,
     },
 
     /// Pull, regenerate templates, commit & push
     Reset {
-        /// Collaborator GitHub username (default: all)
+        /// Mailbox name (default: all)
         name: Option<String>,
 
         /// Regenerate files without pulling/pushing
@@ -237,5 +248,3 @@ pub enum CollabCommands {
         no_sync: bool,
     },
 }
-
-
