@@ -210,7 +210,7 @@ fn test_collab_dir() {
 
     let dir = collaborator::collab_dir(&collab);
     // Should lowercase the github user
-    assert!(dir.to_string_lossy().ends_with("for/alexuser"));
+    assert!(dir.to_string_lossy().ends_with("collabs/alexuser/to"));
 
     std::env::remove_var("CORRKIT_DATA");
 }

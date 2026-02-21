@@ -20,9 +20,9 @@ pub struct Collaborator {
     pub account: String,
 }
 
-/// Return the local collab directory (correspondence/for/{gh_user}/).
+/// Return the local collab directory (correspondence/collabs/{gh_user}/to/).
 pub fn collab_dir(collab: &Collaborator) -> PathBuf {
-    resolve::collab_for_dir(&collab.github_user)
+    resolve::collab_to_dir(&collab.github_user)
 }
 
 /// Derive the default repo name: {owner}/to-{collab}.

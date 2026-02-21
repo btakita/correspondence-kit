@@ -165,7 +165,7 @@ pub fn run(
         );
     }
     println!("  - Run: corrkit sync --full");
-    println!("  - Run: corrkit for sync {}", github_user);
+    println!("  - Run: corrkit collab sync {}", github_user);
 
     Ok(())
 }

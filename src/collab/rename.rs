@@ -6,11 +6,12 @@ use crate::config::collaborator::{load_collaborators, save_collaborators};
 use crate::resolve;
 use crate::util::run_cmd_checked;
 
-/// Find the collaborator directory (for/ or by/ inside correspondence).
+/// Find the collaborator directory (collabs/{name}/to or collabs/{name}/from inside correspondence).
 fn find_collab_dir(name: &str) -> Option<std::path::PathBuf> {
     let dd = resolve::data_dir();
-    for prefix in &["for", "by"] {
-        let candidate = dd.join(prefix).join(name.to_lowercase());
+    let collab_base = dd.join("collabs").join(name.to_lowercase());
+    for suffix in &["to", "from"] {
+        let candidate = collab_base.join(suffix);
         if candidate.exists() {
             return Some(candidate);
         }

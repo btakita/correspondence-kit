@@ -144,17 +144,27 @@ pub enum Commands {
         filter: Option<String>,
     },
 
-    /// Collaborator commands (outgoing)
-    #[command(subcommand)]
-    For(ForCommands),
+    /// Find threads awaiting a reply
+    FindUnanswered {
+        /// Name to match as 'your' messages
+        #[arg(long = "from", default_value = "Brian")]
+        from_name: String,
+    },
 
-    /// Collaborator commands (incoming)
+    /// Validate draft markdown files
+    ValidateDraft {
+        /// Draft markdown file(s) to validate
+        #[arg(required = true)]
+        files: Vec<PathBuf>,
+    },
+
+    /// Collaborator commands
     #[command(subcommand)]
-    By(ByCommands),
+    Collab(CollabCommands),
 }
 
 #[derive(Subcommand)]
-pub enum ForCommands {
+pub enum CollabCommands {
     /// Add a new collaborator
     Add {
         /// Collaborator's GitHub username
@@ -228,20 +238,4 @@ pub enum ForCommands {
     },
 }
 
-#[derive(Subcommand)]
-pub enum ByCommands {
-    /// Find threads awaiting a reply
-    FindUnanswered {
-        /// Name to match as 'your' messages
-        #[arg(long = "from", default_value = "Brian")]
-        from_name: String,
-    },
-
-    /// Validate draft markdown files
-    ValidateDraft {
-        /// Draft markdown file(s) to validate
-        #[arg(required = true)]
-        files: Vec<PathBuf>,
-    },
-}
 

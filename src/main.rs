@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
 
-use corrkit::cli::{ByCommands, Cli, Commands, ForCommands};
+use corrkit::cli::{Cli, CollabCommands, Commands};
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -59,8 +59,12 @@ fn main() -> Result<()> {
         Commands::Spaces => corrkit::spaces::run(),
         Commands::AuditDocs => corrkit::audit_docs::run(),
         Commands::Help { filter } => corrkit::help::run(filter.as_deref()),
-        Commands::For(cmd) => match cmd {
-            ForCommands::Add {
+        Commands::FindUnanswered { from_name } => {
+            corrkit::collab::find_unanswered::run(&from_name)
+        }
+        Commands::ValidateDraft { files } => corrkit::collab::validate_draft::run(&files),
+        Commands::Collab(cmd) => match cmd {
+            CollabCommands::Add {
                 github_user,
                 labels,
                 name,
@@ -69,25 +73,19 @@ fn main() -> Result<()> {
                 account,
                 org,
             } => corrkit::collab::add::run(&github_user, &labels, &name, pat, public, &account, &org),
-            ForCommands::Sync { name } => corrkit::collab::sync::run(name.as_deref()),
-            ForCommands::Status => corrkit::collab::sync::status(),
-            ForCommands::Remove { name, delete_repo } => {
+            CollabCommands::Sync { name } => corrkit::collab::sync::run(name.as_deref()),
+            CollabCommands::Status => corrkit::collab::sync::status(),
+            CollabCommands::Remove { name, delete_repo } => {
                 corrkit::collab::remove::run(&name, delete_repo)
             }
-            ForCommands::Rename {
+            CollabCommands::Rename {
                 old_name,
                 new_name,
                 rename_repo,
             } => corrkit::collab::rename::run(&old_name, &new_name, rename_repo),
-            ForCommands::Reset { name, no_sync } => {
+            CollabCommands::Reset { name, no_sync } => {
                 corrkit::collab::reset::run(name.as_deref(), no_sync)
             }
-        },
-        Commands::By(cmd) => match cmd {
-            ByCommands::FindUnanswered { from_name } => {
-                corrkit::collab::find_unanswered::run(&from_name)
-            }
-            ByCommands::ValidateDraft { files } => corrkit::collab::validate_draft::run(&files),
         },
     }
 }

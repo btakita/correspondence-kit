@@ -51,8 +51,18 @@ pub fn contacts_dir() -> PathBuf {
     data_dir().join("contacts")
 }
 
-pub fn collab_for_dir(gh_user: &str) -> PathBuf {
-    data_dir().join("for").join(gh_user.to_lowercase())
+pub fn collab_to_dir(gh_user: &str) -> PathBuf {
+    data_dir()
+        .join("collabs")
+        .join(gh_user.to_lowercase())
+        .join("to")
+}
+
+pub fn collab_from_dir(gh_user: &str) -> PathBuf {
+    data_dir()
+        .join("collabs")
+        .join(gh_user.to_lowercase())
+        .join("from")
 }
 
 pub fn sync_state_file() -> PathBuf {

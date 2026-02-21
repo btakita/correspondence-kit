@@ -92,9 +92,9 @@ fn test_cli_contact_add_requires_args() {
 }
 
 #[test]
-fn test_cli_for_add_requires_args() {
+fn test_cli_collab_add_requires_args() {
     let mut cmd = corrkit_cmd();
-    cmd.args(["for", "add"]);
+    cmd.args(["collab", "add"]);
     cmd.assert().failure();
 }
 

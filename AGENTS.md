@@ -60,7 +60,7 @@ See README.md for full config reference (accounts.toml, contacts.toml, Gmail OAu
 - **Multi-label accumulation**: Thread fetched from multiple labels/accounts accumulates all in metadata.
 - **Incremental by default**: Tracks IMAP UIDs per-account in `.sync-state.json`. `--full` re-fetches everything.
 - **Streaming writes**: Each message merged immediately. If sync crashes, state is not saved; next run re-fetches.
-- **Shared label routing**: Labels in `collaborators.toml` route to `correspondence/for/{gh-user}/conversations/`.
+- **Shared label routing**: Labels in `collaborators.toml` route to `correspondence/collabs/{gh-user}/to/conversations/`.
   Supports `account:label` syntax for per-label account binding.
 - **Dedup**: Messages deduplicated by `(sender, date)` tuple when merging into existing files.
 - **Slug collisions**: Different threads with same slug get `-2`, `-3` suffix.

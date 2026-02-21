@@ -21,8 +21,8 @@ Claude Code skill for managing email correspondence using locally synced threads
 ## Commands
 
 ```sh
-corrkit by find-unanswered          # List threads awaiting a reply
-corrkit by validate-draft FILE      # Validate draft markdown format
+corrkit find-unanswered             # List threads awaiting a reply
+corrkit validate-draft FILE         # Validate draft markdown format
 corrkit sync                        # Re-sync threads from all accounts
 corrkit list-folders ACCOUNT        # List IMAP folders for an account
 corrkit push-draft FILE             # Save draft to email provider
@@ -36,5 +36,5 @@ and status values (`draft` -> `review` -> `approved` -> `sent`).
 
 ## Legacy files
 
-- `find_unanswered.py` — Python predecessor of `corrkit by find-unanswered`. Requires
+- `find_unanswered.py` — Python predecessor of `corrkit find-unanswered`. Requires
   `.env` with `GMAIL_USER_EMAIL`. Superseded by the Rust CLI command.
