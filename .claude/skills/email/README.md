@@ -5,18 +5,18 @@ Claude Code skill for managing email correspondence using locally synced threads
 ## Prerequisites
 
 - `corky` installed and on PATH
-- `correspondence/.corky.toml` configured with at least one email account
-- `corky sync` run at least once to populate `correspondence/conversations/`
-- `correspondence/voice.md` for writing style
+- `mail/.corky.toml` configured with at least one email account
+- `corky sync` run at least once to populate `mail/conversations/`
+- `mail/voice.md` for writing style
 
 ## Data paths
 
 | Path | Purpose |
 |---|---|
-| `correspondence/conversations/*.md` | Synced email threads (one file per thread) |
-| `correspondence/drafts/*.md` | Outgoing drafts being worked on |
-| `correspondence/contacts/{name}/AGENTS.md` | Per-contact context for tone and topics |
-| `correspondence/manifest.toml` | Thread index by labels, accounts, contacts |
+| `mail/conversations/*.md` | Synced email threads (one file per thread) |
+| `mail/drafts/*.md` | Outgoing drafts being worked on |
+| `mail/contacts/{name}/AGENTS.md` | Per-contact context for tone and topics |
+| `mail/manifest.toml` | Thread index by labels, accounts, contacts |
 
 ## Commands
 
