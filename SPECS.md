@@ -113,7 +113,7 @@ Message header regex: `^## (.+?) — (.+)$` (multiline, em dash U+2014)
 Required fields: `# Subject` heading, `**To**`, `---` separator
 Recommended fields: `**Status**`, `**Author**`
 Status values: `draft` → `review` → `approved` → `sent`
-Valid send statuses (for push-draft --send): `review`, `approved`
+Valid send statuses (for draft push --send): `review`, `approved`
 
 ### 3.3 .corky.toml
 
@@ -338,11 +338,14 @@ corky list-folders [ACCOUNT]
 Without argument: lists available account names.
 With argument: connects to IMAP and lists all folders with flags.
 
-### 5.5 push-draft
+### 5.5 draft push
 
 ```
-corky push-draft FILE [--send]
+corky draft push FILE [--send]
+corky mailbox draft push FILE [--send]
 ```
+
+Alias: `corky push-draft` (hidden, backwards-compatible).
 
 Default: creates a draft via IMAP APPEND to the drafts folder.
 `--send`: sends via SMTP. Requires Status to be `review` or `approved`.
@@ -475,23 +478,43 @@ Alias: `corky mb reset`
 Pull latest, regenerate all template files (AGENTS.md, README.md, CLAUDE.md symlink, .gitignore, voice.md, notify.yml) at `mailboxes/{name}/`, commit, push.
 `--no-sync`: regenerate files without pull/push.
 
-### 5.17 find-unanswered
+### 5.17 unanswered
 
 ```
-corky find-unanswered [--from NAME]
+corky unanswered [SCOPE] [--from NAME]
+corky mailbox unanswered [SCOPE] [--from NAME]
 ```
 
-Scans `conversations/` for threads where the last message sender doesn't match `--from` (default: "Brian"). Designed to run in a mailbox directory.
+Alias: `corky find-unanswered` (hidden, backwards-compatible).
+
+Scans conversations for threads where the last message sender doesn't match `--from`.
+
+Scope argument:
+- Omitted → scan root `conversations/` + all `mailboxes/*/conversations/`
+- `.` → root `conversations/` only
+- `NAME` → `mailboxes/{name}/conversations/` only
+
+`--from` resolution: CLI flag > `[owner] name` in `.corky.toml` > error.
+
+Output is grouped by scope when scanning multiple directories.
 
 Sender regex: `^## (.+?) —` (multiline, em dash)
 
-### 5.18 validate-draft
+### 5.18 draft validate
 
 ```
-corky validate-draft FILE [FILE...]
+corky draft validate [FILE|SCOPE...]
+corky mailbox draft validate [FILE|SCOPE...]
 ```
+
+Alias: `corky validate-draft` (hidden, backwards-compatible).
 
 Validates draft files. Checks: subject heading, required fields (To), recommended fields (Status, Author), valid status value, `---` separator, non-empty body.
+
+Scope argument (when no files given):
+- Omitted → scan root `drafts/` + all `mailboxes/*/drafts/`
+- `.` → root `drafts/` only
+- `NAME` → `mailboxes/{name}/drafts/` only
 
 Exit code: 0 if all valid, 1 if any errors.
 
@@ -619,12 +642,12 @@ Filename convention: `YYYY-MM-DD-{slug}.md`.
 
 ### 8.2 Validate
 
-`corky validate-draft` checks format. See section 5.18.
+`corky draft validate` checks format. See section 5.18.
 
 ### 8.3 Push / Send
 
-`corky push-draft FILE`: IMAP APPEND to drafts folder.
-`corky push-draft FILE --send`: SMTP send, update Status to `sent`.
+`corky draft push FILE`: IMAP APPEND to drafts folder.
+`corky draft push FILE --send`: SMTP send, update Status to `sent`.
 
 Account resolution: Account field → From field → default account.
 
@@ -685,7 +708,7 @@ Preset values are defaults — any field explicitly set on the account wins.
 
 ### 11.2 Sending Account
 
-For `push-draft`:
+For `draft push`:
 1. `**Account**` metadata field → lookup by name in `.corky.toml`
 2. `**From**` metadata field → lookup by email address (case-insensitive)
 3. Default account (first with `default = true`, or first in file)

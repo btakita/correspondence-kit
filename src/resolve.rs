@@ -47,8 +47,12 @@ pub fn contacts_dir() -> PathBuf {
     data_dir().join("contacts")
 }
 
+pub fn mailboxes_base_dir() -> PathBuf {
+    data_dir().join("mailboxes")
+}
+
 pub fn mailbox_dir(name: &str) -> PathBuf {
-    data_dir().join("mailboxes").join(name.to_lowercase())
+    mailboxes_base_dir().join(name.to_lowercase())
 }
 
 pub fn sync_state_file() -> PathBuf {

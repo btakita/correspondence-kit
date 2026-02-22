@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
 
-use corky::cli::{Cli, Commands, MailboxCommands, SyncCommands};
+use corky::cli::{Cli, Commands, DraftCommands, MailboxCommands, SyncCommands};
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -64,10 +64,13 @@ fn main() -> Result<()> {
         Commands::InstallSkill { name } => corky::skill::run(&name),
         Commands::AuditDocs => corky::audit_docs::run(),
         Commands::Help { filter } => corky::help::run(filter.as_deref()),
-        Commands::FindUnanswered { from_name } => {
-            corky::mailbox::find_unanswered::run(&from_name)
+        Commands::Unanswered { scope, from_name } => {
+            let from = resolve_from_name(from_name)?;
+            let scope = corky::mailbox::find_unanswered::Scope::from_arg(scope.as_deref());
+            corky::mailbox::find_unanswered::run(scope, &from)
         }
         Commands::ValidateDraft { files } => corky::mailbox::validate_draft::run(&files),
+        Commands::Draft(cmd) => run_draft_command(cmd),
         Commands::Mailbox(cmd) => match cmd {
             MailboxCommands::List => corky::mailbox::list::run(),
             MailboxCommands::Add {
@@ -104,6 +107,40 @@ fn main() -> Result<()> {
             MailboxCommands::Reset { name, no_sync } => {
                 corky::mailbox::reset::run(name.as_deref(), no_sync)
             }
+            MailboxCommands::Unanswered { scope, from_name } => {
+                let from = resolve_from_name(from_name)?;
+                let scope =
+                    corky::mailbox::find_unanswered::Scope::from_arg(scope.as_deref());
+                corky::mailbox::find_unanswered::run(scope, &from)
+            }
+            MailboxCommands::Draft(cmd) => run_draft_command(cmd),
         },
     }
+}
+
+fn run_draft_command(cmd: DraftCommands) -> anyhow::Result<()> {
+    match cmd {
+        DraftCommands::Validate { args } => {
+            corky::mailbox::validate_draft::run_scoped(&args)
+        }
+        DraftCommands::Push { file, send } => corky::draft::run(&file, send),
+    }
+}
+
+/// Resolve the --from name: CLI flag > owner.name in .corky.toml > error.
+fn resolve_from_name(from_name: Option<String>) -> anyhow::Result<String> {
+    if let Some(name) = from_name {
+        return Ok(name);
+    }
+    if let Some(cfg) = corky::config::corky_config::try_load_config(None) {
+        if let Some(owner) = cfg.owner {
+            if !owner.name.is_empty() {
+                return Ok(owner.name);
+            }
+        }
+    }
+    anyhow::bail!(
+        "No --from name provided and no [owner] name in .corky.toml.\n\
+         Use --from NAME or set name in [owner] section of .corky.toml."
+    )
 }

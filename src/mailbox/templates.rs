@@ -51,8 +51,8 @@ Reply body text.
 Run the helper command to find threads awaiting a reply:
 
 ```sh
-corky find-unanswered
-corky find-unanswered --from "{owner_name}"
+corky unanswered
+corky unanswered --from "{owner_name}"
 ```
 
 ## Drafting a reply
@@ -90,7 +90,7 @@ and note which thread you're replying to in the body.
 ### Validating a draft
 
 ```sh
-corky validate-draft drafts/2026-02-19-example.md
+corky draft validate drafts/2026-02-19-example.md
 ```
 
 ### Status flow
@@ -111,7 +111,7 @@ on his behalf.
 
 - Read conversations
 - Create and edit drafts
-- Run `corky find-unanswered` and `corky validate-draft`
+- Run `corky unanswered` and `corky draft validate`
 - Push changes to this repo
 
 ## What only {owner_name} can do
@@ -153,7 +153,7 @@ git pull
 ### 2. Find threads that need a reply
 
 ```sh
-corky find-unanswered
+corky unanswered
 ```
 
 ### 3. Draft a reply
@@ -177,7 +177,7 @@ Set **Status** to `review` when it's ready for {owner_name} to look at.
 ### 4. Validate and push
 
 ```sh
-corky validate-draft drafts/your-draft.md
+corky draft validate drafts/your-draft.md
 git add drafts/
 git commit -m "Draft reply to ..."
 git push

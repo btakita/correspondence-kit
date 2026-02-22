@@ -64,21 +64,21 @@ corky mailbox sync
 corky mailbox status
 
 # 4. Review a collaborator's draft and push it as an email draft
-corky push-draft mailboxes/alex/drafts/2026-02-19-reply.md
+corky draft push mailboxes/alex/drafts/2026-02-19-reply.md
 ```
 
 ## What collaborators can do
 
 - Read conversations labeled for them
 - Draft replies in `mailboxes/{name}/drafts/` following the format in AGENTS.md
-- Run `corky find-unanswered` and `corky validate-draft` in their repo
+- Run `corky unanswered` and `corky draft validate` in their repo
 - Push changes to their shared repo
 
 ## What only you can do
 
 - Sync new emails (`corky sync`)
 - Push synced threads to mailbox repos (`corky mailbox sync`)
-- Send emails (`corky push-draft --send`)
+- Send emails (`corky draft push --send`)
 - Change draft Status to `sent`
 
 ## Managing mailboxes
