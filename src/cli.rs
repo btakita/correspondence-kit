@@ -189,6 +189,35 @@ pub enum SyncCommands {
 
 #[derive(Subcommand)]
 pub enum DraftCommands {
+    /// Scaffold a new draft file
+    New {
+        /// Subject line
+        subject: String,
+
+        /// Recipient email address
+        #[arg(long)]
+        to: String,
+
+        /// CC email address
+        #[arg(long)]
+        cc: Option<String>,
+
+        /// Sending account name from .corky.toml
+        #[arg(long)]
+        account: Option<String>,
+
+        /// Sending email address (resolves account)
+        #[arg(long)]
+        from: Option<String>,
+
+        /// Message ID to reply to
+        #[arg(long)]
+        in_reply_to: Option<String>,
+
+        /// Create in a mailbox's drafts/ instead of root
+        #[arg(long)]
+        mailbox: Option<String>,
+    },
     /// Validate draft markdown files
     Validate {
         /// Files to validate, or scope: "." for root, mailbox name, omit for all

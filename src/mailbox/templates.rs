@@ -57,7 +57,14 @@ corky unanswered --from "{owner_name}"
 
 ## Drafting a reply
 
-Create a file in `drafts/` named `YYYY-MM-DD-slug.md`:
+Use the `draft new` command to scaffold a draft:
+
+```sh
+corky draft new --to recipient@example.com "Subject line"
+corky draft new --to recipient@example.com --in-reply-to "<msg-id>" "Re: Thread subject"
+```
+
+Or create a file manually in `drafts/` named `YYYY-MM-DD-slug.md`:
 
 ```markdown
 # Subject
@@ -158,7 +165,13 @@ corky unanswered
 
 ### 3. Draft a reply
 
-Create a file in `drafts/` named `YYYY-MM-DD-slug.md`:
+Scaffold a draft with `corky draft new`:
+
+```sh
+corky draft new --to recipient@example.com "Subject line"
+```
+
+Or create a file manually in `drafts/` named `YYYY-MM-DD-slug.md`:
 
 ```markdown
 # Subject

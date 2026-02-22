@@ -1,5 +1,7 @@
 //! Push a draft markdown file as an email draft, or send it directly.
 
+pub mod new;
+
 use anyhow::{bail, Result};
 use lettre::message::Mailbox;
 use lettre::transport::smtp::authentication::Credentials;

@@ -524,6 +524,26 @@ corky --mailbox NAME <subcommand> [args...]
 
 Available on all commands. Resolves the named mailbox via app config and sets `CORKY_DATA` before dispatching to the subcommand.
 
+### 5.21 draft new
+
+```
+corky draft new SUBJECT --to EMAIL [--cc EMAIL] [--account NAME] [--from EMAIL]
+                [--in-reply-to MSG-ID] [--mailbox NAME]
+corky mailbox draft new SUBJECT --to EMAIL [...]
+```
+
+Scaffolds a new draft file with pre-filled metadata.
+
+Output: creates `drafts/YYYY-MM-DD-{slug}.md` and prints the path.
+
+- `--mailbox NAME`: create in `mailboxes/{name}/drafts/` instead of root `drafts/`
+- `--cc`: CC recipient
+- `--account`: sending account name from `.corky.toml`
+- `--from`: sending email address
+- `--in-reply-to`: message ID for threading
+- Author resolved from `[owner] name` in `.corky.toml`
+- Slug collisions handled with `-2`, `-3` suffix (same as sync)
+
 ## 6. Sync Algorithm
 
 ### 6.1 State

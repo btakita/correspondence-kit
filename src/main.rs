@@ -120,6 +120,23 @@ fn main() -> Result<()> {
 
 fn run_draft_command(cmd: DraftCommands) -> anyhow::Result<()> {
     match cmd {
+        DraftCommands::New {
+            subject,
+            to,
+            cc,
+            account,
+            from,
+            in_reply_to,
+            mailbox,
+        } => corky::draft::new::run(
+            &subject,
+            &to,
+            cc.as_deref(),
+            account.as_deref(),
+            from.as_deref(),
+            in_reply_to.as_deref(),
+            mailbox.as_deref(),
+        ),
         DraftCommands::Validate { args } => {
             corky::mailbox::validate_draft::run_scoped(&args)
         }

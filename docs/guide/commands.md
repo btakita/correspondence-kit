@@ -67,6 +67,8 @@ corky unanswered NAME                        # Specific mailbox only
 ## Drafts
 
 ```sh
+corky draft new "Subject" --to EMAIL         # Scaffold a new draft file
+corky draft new "Subject" --to EMAIL --mailbox NAME  # Create in mailbox drafts/
 corky draft validate                         # Validate all drafts (root + mailboxes)
 corky draft validate .                       # Validate root drafts only
 corky draft validate NAME                    # Validate drafts in a mailbox
@@ -74,6 +76,15 @@ corky draft validate FILE [FILE...]          # Validate specific files
 corky draft push mail/drafts/FILE.md         # Save a draft via IMAP
 corky draft push mail/drafts/FILE.md --send  # Send via SMTP
 ```
+
+### draft new
+
+```
+corky draft new SUBJECT --to EMAIL [--cc EMAIL] [--account NAME]
+               [--from EMAIL] [--in-reply-to MSG-ID] [--mailbox NAME]
+```
+
+Scaffolds a new draft file with pre-filled metadata. Creates `drafts/YYYY-MM-DD-slug.md` and prints the path. Author resolved from `[owner] name` in `.corky.toml`.
 
 ### draft push
 
