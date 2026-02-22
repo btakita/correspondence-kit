@@ -11,6 +11,12 @@ Corky syncs threads from any IMAP provider (Gmail, Protonmail Bridge, self-hoste
 ## Install
 
 ```sh
+pip install corky        # or: pipx install corky
+```
+
+Or via shell installer:
+
+```sh
 curl -sSf https://raw.githubusercontent.com/btakita/corky/main/install.sh | sh
 ```
 

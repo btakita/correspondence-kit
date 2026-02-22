@@ -1,0 +1,24 @@
+[build-system]
+requires = ["maturin>=1.9,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "corky"
+version = "0.7.0"
+description = "Sync email threads from IMAP to Markdown, draft replies, manage collaborators"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Topic :: Communications :: Email",
+]
+
+[project.urls]
+Homepage = "https://github.com/btakita/corky"
+Documentation = "https://btakita.github.io/corky"
+
+[tool.maturin]
+bindings = "bin"
+strip = true

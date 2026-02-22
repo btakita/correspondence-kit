@@ -1,4 +1,4 @@
-.PHONY: build release test clippy check precommit install install-hooks clean init-python
+.PHONY: build release test clippy check precommit install install-hooks clean init-python wheel
 
 # Build debug binary
 build:
@@ -42,14 +42,18 @@ clean:
 	cargo clean
 	rm -f .bin/corky
 
-# Set up Python venv (for wrapper development)
+# Set up Python venv with maturin
 init-python: PY_VERSION = $(shell [ -f .python-version ] && \
 	cat .python-version || echo "3.14")
 init-python:
-	@echo "Setting up Python $(PY_VERSION) venv for wrapper development..."
+	@echo "Setting up Python $(PY_VERSION) venv..."
 	@if command -v mise >/dev/null 2>&1; then \
 		mise install; \
 	fi
 	uv venv .venv --python "$(PY_VERSION)" --no-project --clear --seed $(VENV_ARGS)
-	uv pip install -e wrapper/
-	@echo "Python wrapper installed in .venv (corky binary still comes from .bin/)"
+	uv pip install maturin
+	@echo "Venv ready. Use 'make wheel' to build, or '.venv/bin/maturin develop --release' to install into venv."
+
+# Build wheel and install into venv for testing
+wheel:
+	.venv/bin/maturin develop --release
