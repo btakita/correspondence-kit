@@ -15,6 +15,8 @@ Corky inverts this:
 1. **You label threads in your email client.** Only threads you explicitly label get synced locally.
 2. **Labels route to scoped views.** Each mailbox gives a collaborator or agent a directory containing only the threads labeled for them — nothing else.
 3. **Credentials never leave your machine.** Config lives inside `mail/` (your private data repo). Agents draft replies in markdown; only you can push to your email.
+4. **Reduced context poisoning.** Agents only see the threads you route to them — not your entire inbox. A focused context means fewer irrelevant details leaking into prompts, better signal-to-noise, and more accurate replies.
+5. **Per-contact context.** Each mailbox ships with `AGENTS.md` (or `CLAUDE.md`), `voice.md`, and relationship-specific instructions — so agents adapt their tone and knowledge to each collaborator automatically.
 
 ## Designed for humans and agents
 
