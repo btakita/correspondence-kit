@@ -4,6 +4,14 @@ Corky is alpha software. Expect breaking changes between minor versions.
 
 Use `BREAKING CHANGE:` prefix in version entries to flag incompatible changes.
 
+## 0.7.3
+
+Always install the email skill.
+
+- **BREAKING CHANGE: `--with-skill` removed from `corky init`**: The email skill is now installed unconditionally during `init`. The `--with-skill` flag is removed.
+- **`mb add` / `mb reset` ship email skill**: Mailbox creation and reset now install `.claude/skills/email/` automatically.
+- **Email skill files updated**: Paths simplified (no `mail/` prefix), added `draft new` command reference, removed legacy `find_unanswered.py`.
+
 ## 0.7.2
 
 New `draft new` command for scaffolding draft files.
