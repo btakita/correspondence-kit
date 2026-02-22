@@ -5,23 +5,24 @@ Claude Code skill for managing email correspondence using locally synced threads
 ## Prerequisites
 
 - `corky` installed and on PATH
-- `mail/.corky.toml` configured with at least one email account
-- `corky sync` run at least once to populate `mail/conversations/`
-- `mail/voice.md` for writing style
+- `.corky.toml` configured with at least one email account
+- `corky sync` run at least once to populate `conversations/`
+- `voice.md` for writing style
 
 ## Data paths
 
 | Path | Purpose |
 |---|---|
-| `mail/conversations/*.md` | Synced email threads (one file per thread) |
-| `mail/drafts/*.md` | Outgoing drafts being worked on |
-| `mail/contacts/{name}/AGENTS.md` | Per-contact context for tone and topics |
-| `mail/manifest.toml` | Thread index by labels, accounts, contacts |
+| `conversations/*.md` | Synced email threads (one file per thread) |
+| `drafts/*.md` | Outgoing drafts being worked on |
+| `contacts/{name}/AGENTS.md` | Per-contact context for tone and topics |
+| `manifest.toml` | Thread index by labels, accounts, contacts |
 
 ## Commands
 
 ```sh
 corky unanswered                  # List threads awaiting a reply
+corky draft new --to EMAIL "Subj" # Scaffold a new draft file
 corky draft validate FILE         # Validate draft markdown format
 corky draft validate              # Validate all drafts (root + mailboxes)
 corky sync                        # Re-sync threads from all accounts
@@ -35,7 +36,3 @@ corky draft push FILE --send      # Send via SMTP (owner only)
 See the main [README.md](../../../README.md#draft-format) for the draft markdown format
 and status values (`draft` -> `review` -> `approved` -> `sent`).
 
-## Legacy files
-
-- `find_unanswered.py` — Python predecessor of `corky unanswered`. Requires
-  `.env` with `GMAIL_USER_EMAIL`. Superseded by the Rust CLI command.

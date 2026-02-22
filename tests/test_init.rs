@@ -35,7 +35,6 @@ fn run_init_isolated(
         user, path, provider, password_cmd, labels, github_user, name,
         false, // sync
         mailbox, force,
-        false, // with_skill
     );
     // Restore HOME
     if let Some(h) = old_home {
@@ -223,22 +222,16 @@ fn test_init_no_gitignore_without_git() {
 }
 
 #[test]
-fn test_init_with_skill() {
+fn test_init_installs_skill() {
     let tmp = TempDir::new().unwrap();
     let path = tmp.path().join("skillproject");
 
-    let _lock = ENV_MUTEX.lock().unwrap();
-    let old_home = std::env::var("HOME").ok();
-    std::env::set_var("HOME", tmp.path().to_string_lossy().as_ref());
-    let result = corky::init::run(
-        "user@example.com", &path, "gmail", "", "correspondence", "", "",
-        false, "test-init-mb-skill", true,
-        true, // with_skill
-    );
-    if let Some(h) = old_home {
-        std::env::set_var("HOME", h);
-    }
-    result.unwrap();
+    run_init_isolated(
+        &tmp, &path, "user@example.com", "gmail",
+        "", "correspondence", "", "",
+        "test-init-mb-skill", true,
+    )
+    .unwrap();
 
     assert!(path.join(".claude/skills/email/SKILL.md").exists());
     assert!(path.join(".claude/skills/email/README.md").exists());

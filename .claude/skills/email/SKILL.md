@@ -11,11 +11,13 @@ Manage and draft correspondence using locally synced email threads.
 
 ## Use These Paths and Commands
 
-- `mail/conversations/` — synced email threads as Markdown (flat, one file per thread)
-- `mail/contacts/{name}/AGENTS.md` — per-contact context for drafting
-- `mail/manifest.toml` — thread index by labels, accounts, contacts
-- `mail/drafts/` — outgoing email drafts being worked on
+- `conversations/` — synced email threads as Markdown (one file per thread)
+- `contacts/{name}/AGENTS.md` — per-contact context for drafting
+- `manifest.toml` — thread index by labels, accounts, contacts
+- `drafts/` — outgoing email drafts being worked on
 - `corky unanswered` — list threads awaiting a reply
+- `corky draft new --to EMAIL "Subject"` — scaffold a new draft
+- `corky draft validate` — validate draft format
 - `corky sync` — re-sync threads from all accounts
 - `corky list-folders ACCOUNT` — list IMAP folders for an account
 
@@ -28,16 +30,17 @@ Manage and draft correspondence using locally synced email threads.
 4. Wait for instruction before drafting anything
 
 ### Draft a reply
-1. Read the full thread from `mail/conversations/`
+1. Read the full thread from `conversations/`
 2. Identify the key ask or context requiring a response
-3. Draft a reply in `mail/drafts/[YYYY-MM-DD]-[slug].md` matching the voice guidelines
+3. Draft a reply in `drafts/[YYYY-MM-DD]-[slug].md` matching the voice guidelines
 4. Present the draft and ask for feedback before finalizing
 5. Iterate until approved — then offer to save as a draft
 
 ### Draft a new email
 1. Ask for: recipient, topic, any relevant context or linked threads
-2. Draft in `mail/drafts/[YYYY-MM-DD]-[slug].md`
-3. Iterate until approved
+2. Run `corky draft new --to EMAIL "Subject"` to scaffold the file
+3. Fill in the body in the generated `drafts/[YYYY-MM-DD]-[slug].md`
+4. Iterate until approved
 
 ## Success Criteria
 

@@ -271,7 +271,7 @@ After sync, scan all `.md` files in `conversations/`:
 ### 5.1 init
 
 ```
-corky init --user EMAIL [PATH] [--with-skill] [--provider PROVIDER]
+corky init --user EMAIL [PATH] [--provider PROVIDER]
              [--password-cmd CMD] [--labels LABEL,...] [--github-user USER]
              [--name NAME] [--mailbox-name NAME] [--sync] [--force]
 ```
@@ -281,7 +281,7 @@ corky init --user EMAIL [PATH] [--with-skill] [--provider PROVIDER]
 - Generates `.corky.toml` at `{path}/mail/`
 - Installs `voice.md` at `{path}/mail/` if not present
 - If inside a git repo: adds `mail` to `.gitignore`
-- `--with-skill`: install the email skill to `.claude/skills/email/`
+- Installs the email skill to `.claude/skills/email/`
 - Registers the project dir as a named mailbox in app config
 - `--force`: overwrite existing config; without it, exit 1 if `.corky.toml` exists
 - `--sync`: set `CORKY_DATA` env, run sync
@@ -298,6 +298,7 @@ corky install-skill NAME
 - Install an agent skill into the current directory
 - Currently supported: `email` (installs `.claude/skills/email/SKILL.md` and `README.md`)
 - Skips files that already exist (never overwrites)
+- Works from any directory (mailbox repos ship the skill automatically via `mb add`/`mb reset`)
 
 ### 5.2 sync
 
@@ -603,7 +604,7 @@ State is saved only after all accounts complete successfully. If sync crashes mi
 
 Without `--github` (plain directory):
 1. Create `mailboxes/{name}/` with conversations/drafts/contacts subdirectories
-2. Write template files (AGENTS.md, CLAUDE.md symlink, README.md, voice.md, .gitignore)
+2. Write template files (AGENTS.md, CLAUDE.md symlink, README.md, voice.md, .gitignore, `.claude/skills/email/`)
 3. Update `.corky.toml`
 
 With `--github` (submodule):
@@ -649,7 +650,7 @@ Then:
 ### 7.6 Reset
 
 1. `git pull --rebase` (submodules only)
-2. Regenerate: AGENTS.md, CLAUDE.md (symlink), README.md, .gitignore, voice.md, workflow at `mailboxes/{name}/`
+2. Regenerate: AGENTS.md, CLAUDE.md (symlink), README.md, .gitignore, voice.md, `.claude/skills/email/` at `mailboxes/{name}/`
 3. Stage, commit, push (submodules only)
 4. Update submodule ref in parent (submodules only)
 

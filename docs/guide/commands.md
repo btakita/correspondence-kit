@@ -15,7 +15,7 @@ corky install-skill email     # Install the email agent skill
 ### init
 
 ```
-corky init --user EMAIL [PATH] [--with-skill] [--provider PROVIDER]
+corky init --user EMAIL [PATH] [--provider PROVIDER]
            [--password-cmd CMD] [--labels LABEL,...] [--github-user USER]
            [--name NAME] [--mailbox-name NAME] [--sync] [--force]
 ```
@@ -24,7 +24,6 @@ Creates `{path}/mail/` with directory structure, `.corky.toml`, and `voice.md`. 
 
 - `--provider`: `gmail` (default), `protonmail-bridge`, `imap`
 - `--labels`: default `correspondence` (comma-separated)
-- `--with-skill`: install the email skill to `.claude/skills/email/`
 - `--force`: overwrite existing config
 - `--sync`: run sync after init
 
@@ -35,6 +34,7 @@ corky install-skill NAME
 ```
 
 Install an agent skill into the current directory. Currently supported: `email`.
+Mailbox repos ship the skill automatically via `mb add`/`mb reset`.
 
 ## Sync
 

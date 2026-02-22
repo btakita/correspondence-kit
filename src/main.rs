@@ -21,7 +21,6 @@ fn main() -> Result<()> {
         Commands::Init {
             path,
             user,
-            with_skill,
             provider,
             password_cmd,
             labels,
@@ -41,7 +40,6 @@ fn main() -> Result<()> {
             sync,
             &mailbox_name,
             force,
-            with_skill,
         ),
         Commands::Sync { command } => match command {
             None => corky::sync::run(false, None),

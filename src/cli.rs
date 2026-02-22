@@ -24,10 +24,6 @@ pub enum Commands {
         #[arg(long)]
         user: String,
 
-        /// Install the email skill to .claude/skills/email/
-        #[arg(long)]
-        with_skill: bool,
-
         /// Email provider
         #[arg(long, default_value = "gmail", value_parser = ["gmail", "protonmail-bridge", "imap"])]
         provider: String,

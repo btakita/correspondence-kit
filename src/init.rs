@@ -124,7 +124,6 @@ pub fn run(
     sync: bool,
     mailbox: &str,
     force: bool,
-    with_skill: bool,
 ) -> Result<()> {
     // 1. Resolve project path
     let path = if path.starts_with("~") {
@@ -171,10 +170,8 @@ pub fn run(
         ensure_gitignore_entry(&repo_root, "mail")?;
     }
 
-    // 6. Install email skill if requested
-    if with_skill {
-        crate::skill::install("email", &path)?;
-    }
+    // 6. Install email skill
+    crate::skill::install("email", &path)?;
 
     // 7. Register mailbox in app config
     app_config::add_mailbox(mailbox, &path.to_string_lossy())?;
@@ -212,9 +209,6 @@ pub fn run(
             println!("  - Add imap_host, smtp_host to mail/.corky.toml");
         }
         println!("  - Run: corky sync");
-        if !with_skill {
-            println!("  - Run: corky install-skill email  (to add the email agent skill)");
-        }
     }
 
     Ok(())

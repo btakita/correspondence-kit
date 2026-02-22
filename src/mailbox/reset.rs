@@ -60,6 +60,14 @@ fn regenerate(display_name: &str, owner_name: &str, mb_path: &Path) -> Result<()
         println!("  Updated voice.md");
     }
 
+    // .claude/skills/email/
+    let skill_dir = mb_path.join(".claude/skills/email");
+    std::fs::create_dir_all(&skill_dir)?;
+    std::fs::write(skill_dir.join("SKILL.md"), crate::skill::EMAIL_SKILL_MD)?;
+    println!("  Updated .claude/skills/email/SKILL.md");
+    std::fs::write(skill_dir.join("README.md"), crate::skill::EMAIL_README_MD)?;
+    println!("  Updated .claude/skills/email/README.md");
+
     Ok(())
 }
 

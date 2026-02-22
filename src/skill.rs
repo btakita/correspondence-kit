@@ -3,8 +3,8 @@
 use anyhow::{bail, Result};
 use std::path::Path;
 
-const EMAIL_SKILL_MD: &str = include_str!("../.claude/skills/email/SKILL.md");
-const EMAIL_README_MD: &str = include_str!("../.claude/skills/email/README.md");
+pub const EMAIL_SKILL_MD: &str = include_str!("../.claude/skills/email/SKILL.md");
+pub const EMAIL_README_MD: &str = include_str!("../.claude/skills/email/README.md");
 
 /// Install a named skill into a project directory.
 /// Currently only "email" is supported.
