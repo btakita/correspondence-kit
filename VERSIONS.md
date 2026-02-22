@@ -4,6 +4,15 @@ Corky is alpha software. Expect breaking changes between minor versions.
 
 Use `BREAKING CHANGE:` prefix in version entries to flag incompatible changes.
 
+## 0.7.1
+
+CLI reorganization: draft subcommand group, unanswered scoping.
+
+- **`corky draft validate` / `corky draft push`**: Draft commands moved under `draft` subcommand group. `validate-draft` and `push-draft` kept as hidden aliases for backwards compatibility. Also available under `corky mailbox draft`.
+- **`corky draft validate` scope discovery**: When called with no files, discovers and validates all drafts across root `drafts/` and all `mailboxes/*/drafts/`. Supports `.` (root only) and mailbox name scoping, same pattern as `unanswered`.
+- **`corky unanswered`**: Renamed from `find-unanswered` with scope argument support (`.` for root, mailbox name, omit for all). `find-unanswered` kept as hidden alias.
+- **Mailbox scoping for `unanswered`**: Available as both `corky unanswered [SCOPE]` and `corky mailbox unanswered [SCOPE]`.
+
 ## 0.7.0
 
 BREAKING CHANGE: Rust rewrite. Complete port from Python to Rust.
