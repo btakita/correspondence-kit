@@ -4,6 +4,12 @@ Corky is alpha software. Expect breaking changes between minor versions.
 
 Use `BREAKING CHANGE:` prefix in version entries to flag incompatible changes.
 
+## 0.7.2
+
+New `draft new` command for scaffolding draft files.
+
+- **`corky draft new SUBJECT --to EMAIL`**: Scaffolds a new draft file with pre-filled metadata (To, Status, Author, etc.). Supports `--cc`, `--account`, `--from`, `--in-reply-to`, and `--mailbox` flags. Author resolved from `[owner] name` in `.corky.toml`. Slug collisions handled with `-2`, `-3` suffix. Also available as `corky mailbox draft new`.
+
 ## 0.7.1
 
 CLI reorganization: draft subcommand group, unanswered scoping.
