@@ -115,6 +115,51 @@ fn test_cli_migrate_subcommand() {
 }
 
 #[test]
+fn test_cli_sync_routes() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let project_dir = tmp.path().to_path_buf();
+    let data_dir = project_dir.join("correspondence");
+
+    // Create conversations dir with a thread that has a routed label
+    std::fs::create_dir_all(data_dir.join("conversations")).unwrap();
+    std::fs::write(
+        data_dir.join("conversations/test-thread.md"),
+        "# Test Thread\n\n\
+         **Labels**: for-alex\n\
+         **Accounts**: personal\n\
+         **Thread ID**: test thread\n\
+         **Last updated**: Mon, 10 Feb 2025 10:00:00 +0000\n\n\
+         ---\n\n\
+         ## Alice <alice@example.com> \u{2014} Mon, 10 Feb 2025 10:00:00 +0000\n\n\
+         Hello there!\n",
+    )
+    .unwrap();
+
+    // Create routing config
+    std::fs::write(
+        data_dir.join(".corrkit.toml"),
+        "[accounts.personal]\n\
+         provider = \"gmail\"\n\
+         user = \"test@gmail.com\"\n\
+         password = \"dummy\"\n\
+         labels = [\"inbox\"]\n\n\
+         [routing]\n\
+         for-alex = [\"mailboxes/alex\"]\n",
+    )
+    .unwrap();
+
+    let mut cmd = corrkit_cmd();
+    cmd.current_dir(&project_dir);
+    cmd.args(["sync", "routes"]);
+    cmd.assert().success();
+
+    // Verify the file was copied to the mailbox
+    assert!(data_dir
+        .join("mailboxes/alex/conversations/test-thread.md")
+        .exists());
+}
+
+#[test]
 fn test_cli_unknown_subcommand() {
     let mut cmd = corrkit_cmd();
     cmd.arg("nonexistent-command");
@@ -170,6 +215,6 @@ labels = ["inbox"]
 
     let mut cmd = corrkit_cmd();
     cmd.env("CORRKIT_DATA", data_dir.to_string_lossy().as_ref());
-    cmd.args(["sync", "--account", "nonexistent"]);
+    cmd.args(["sync", "account", "nonexistent"]);
     cmd.assert().failure();
 }

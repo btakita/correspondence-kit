@@ -320,11 +320,21 @@ corrkit install-skill NAME
 ### 5.2 sync
 
 ```
-corrkit sync [--full] [--account NAME]
+corrkit sync                   # incremental IMAP sync (default)
+corrkit sync full              # full IMAP resync (ignore saved state)
+corrkit sync account NAME      # sync one account
+corrkit sync routes            # apply routing to existing conversations
+corrkit sync mailbox [NAME]    # push/pull shared mailboxes
 ```
 
-Sync all configured accounts (or one with `--account`).
-`--full`: ignore saved state, re-fetch all messages within `sync_days`.
+Bare `corrkit sync` runs incremental IMAP sync for all configured accounts.
+Subcommands:
+- `full`: ignore saved state, re-fetch all messages within `sync_days`
+- `account NAME`: sync only the named account
+- `routes`: apply `[routing]` rules to existing `conversations/*.md` files,
+  copying matching threads into mailbox `conversations/` directories
+- `mailbox [NAME]`: git push/pull shared mailbox repos (alias for `mailbox sync`)
+
 Exit code: 0 on success.
 
 ### 5.3 sync-auth

@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
 
-use corrkit::cli::{Cli, MailboxCommands, Commands};
+use corrkit::cli::{Cli, Commands, MailboxCommands, SyncCommands};
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -43,7 +43,13 @@ fn main() -> Result<()> {
             force,
             with_skill,
         ),
-        Commands::Sync { full, account } => corrkit::sync::run(full, account.as_deref()),
+        Commands::Sync { command } => match command {
+            None => corrkit::sync::run(false, None),
+            Some(SyncCommands::Full) => corrkit::sync::run(true, None),
+            Some(SyncCommands::Account { name }) => corrkit::sync::run(false, Some(&name)),
+            Some(SyncCommands::Routes) => corrkit::sync::routes::run(),
+            Some(SyncCommands::Mailbox { name }) => corrkit::mailbox::sync::run(name.as_deref()),
+        },
         Commands::SyncAuth => corrkit::sync::auth::run(),
         Commands::ListFolders { account } => corrkit::sync::folders::run(account.as_deref()),
         Commands::PushDraft { file, send } => corrkit::draft::run(&file, send),

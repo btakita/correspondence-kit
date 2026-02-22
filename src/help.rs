@@ -5,7 +5,11 @@ use anyhow::Result;
 const COMMANDS: &[(&str, &str)] = &[
     ("init --user EMAIL [PATH]", "Initialize a new project directory"),
     ("install-skill NAME", "Install an agent skill (e.g. email)"),
-    ("sync [--full] [--account NAME]", "Sync email threads to markdown"),
+    ("sync", "Incremental IMAP sync (default)"),
+    ("sync full", "Full IMAP resync"),
+    ("sync account NAME", "Sync one account"),
+    ("sync routes", "Apply routing to existing conversations"),
+    ("sync mailbox [NAME]", "Push/pull shared mailboxes"),
     ("sync-auth", "Gmail OAuth setup"),
     ("list-folders [ACCOUNT]", "List IMAP folders for an account"),
     ("push-draft FILE [--send]", "Save draft to email"),

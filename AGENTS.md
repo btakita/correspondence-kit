@@ -58,13 +58,13 @@ See README.md for full config reference (.corrkit.toml, contacts.toml, Gmail OAu
   Thread identity tracked by `**Thread ID**` metadata inside the file.
 - **File mtime**: Set to last message date via `libc::utime()`.
 - **Multi-label accumulation**: Thread fetched from multiple labels/accounts accumulates all in metadata.
-- **Incremental by default**: Tracks IMAP UIDs per-account in `.sync-state.json`. `--full` re-fetches everything.
+- **Incremental by default**: Tracks IMAP UIDs per-account in `.sync-state.json`. `sync full` re-fetches everything.
 - **Streaming writes**: Each message merged immediately. If sync crashes, state is not saved; next run re-fetches.
 - **Shared label routing**: Labels in `[routing]` section of `.corrkit.toml` route to `correspondence/mailboxes/{name}/conversations/`.
   One label can fan-out to multiple mailboxes.
 - **Dedup**: Messages deduplicated by `(sender, date)` tuple when merging into existing files.
 - **Slug collisions**: Different threads with same slug get `-2`, `-3` suffix.
-- **Orphan cleanup**: On `--full`, files not touched during sync are deleted.
+- **Orphan cleanup**: On `sync full`, files not touched during sync are deleted.
 
 ## File Formats
 

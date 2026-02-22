@@ -199,7 +199,7 @@ pub fn merge_message_to_file(
 ///
 /// Fan-out: one label can route to multiple mailbox directories.
 /// Supports `account:label` syntax for per-account binding.
-fn build_label_routes(account_name: &str) -> std::collections::HashMap<String, Vec<PathBuf>> {
+pub fn build_label_routes(account_name: &str) -> std::collections::HashMap<String, Vec<PathBuf>> {
     let mut routes: std::collections::HashMap<String, Vec<PathBuf>> = std::collections::HashMap::new();
     let config = match corrkit_config::try_load_config(None) {
         Some(c) => c,

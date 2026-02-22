@@ -120,10 +120,11 @@ corrkit --help                    # Show all commands
 corrkit init --user EMAIL        # Initialize in current directory
 corrkit init --user EMAIL /path # Initialize at specific path
 corrkit install-skill email     # Install the email agent skill
-corrkit sync                     # Sync all accounts
-corrkit sync --account personal  # Sync one account
-corrkit sync --full              # Full re-sync (ignore saved state)
-corrkit sync-gmail               # Alias for sync (backward compat)
+corrkit sync                     # Incremental IMAP sync (all accounts)
+corrkit sync full                # Full re-sync (ignore saved state)
+corrkit sync account personal    # Sync one account
+corrkit sync routes              # Apply routing rules to existing conversations
+corrkit sync mailbox [NAME]      # Push/pull shared mailboxes
 corrkit list-folders [ACCOUNT]   # List IMAP folders for an account
 corrkit push-draft correspondence/drafts/FILE.md # Save a draft via IMAP
 corrkit push-draft correspondence/drafts/FILE.md --send  # Send via SMTP

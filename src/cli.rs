@@ -63,13 +63,8 @@ pub enum Commands {
 
     /// Sync email threads to Markdown
     Sync {
-        /// Ignore saved state and re-fetch all messages
-        #[arg(long)]
-        full: bool,
-
-        /// Sync only the named account
-        #[arg(long)]
-        account: Option<String>,
+        #[command(subcommand)]
+        command: Option<SyncCommands>,
     },
 
     /// Gmail OAuth setup
@@ -164,6 +159,27 @@ pub enum Commands {
 
     /// Migrate from accounts.toml + collaborators.toml to .corrkit.toml
     Migrate,
+}
+
+#[derive(Subcommand)]
+pub enum SyncCommands {
+    /// Full IMAP resync (ignore saved state)
+    Full,
+
+    /// Sync one account
+    Account {
+        /// Account name from .corrkit.toml
+        name: String,
+    },
+
+    /// Apply routing rules to existing conversations
+    Routes,
+
+    /// Push/pull shared mailbox repos
+    Mailbox {
+        /// Mailbox name (default: all)
+        name: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]
