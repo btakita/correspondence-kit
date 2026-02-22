@@ -1,0 +1,9 @@
+[book]
+title = "Corky"
+description = "Sync email threads from IMAP to Markdown. Draft replies. Share threads with collaborators."
+authors = ["Brian Takita"]
+language = "en"
+src = "docs"
+
+[output.html]
+git-repository-url = "https://github.com/btakita/corky"

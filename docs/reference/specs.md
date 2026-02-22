@@ -1,3 +1,5 @@
+> **Note:** This is the full functional specification for Corky.
+
 # Corky Functional Specification
 
 > Language-independent specification for the corky email sync and collaboration tool.
@@ -689,4 +691,3 @@ For `push-draft`:
 1. `**Account**` metadata field → lookup by name in `.corky.toml`
 2. `**From**` metadata field → lookup by email address (case-insensitive)
 3. Default account (first with `default = true`, or first in file)
-
