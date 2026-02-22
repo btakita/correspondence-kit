@@ -105,6 +105,23 @@ update instruction files as part of the same change.
 
 **Stay concise.** Combined root + package files should stay well under 1000 lines.
 
+## Workflow
+
+Follow a research → plan → implement cycle. Never write code until the plan is reviewed.
+([Reference](https://boristane.com/blog/how-i-use-claude-code/))
+
+1. **Research** — Read the relevant code deeply. Document findings in `research.md`.
+   Iterate with the user until misunderstandings are resolved.
+2. **Plan** — Write a detailed implementation plan in `plan.md` with file paths and
+   code snippets. Reference existing patterns in the codebase as guides. Iterate with
+   the user — they add inline notes, reject approaches, inject domain knowledge.
+   Repeat until the plan is solid ("don't implement yet").
+3. **Todo** — Produce a granular todo list from the approved plan before writing any code.
+4. **Implement** — Execute the plan. Mark completed tasks, maintain strict typing,
+   and continuously run checks (`make check`). Terse single-sentence feedback is fine
+   during this phase.
+5. **Precommit** — Run `make precommit` and `corrkit audit-docs` before committing.
+
 ## Conventions
 
 - Use `make check` (clippy + test), `make release` (build + .bin symlink) for development
