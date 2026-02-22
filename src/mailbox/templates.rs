@@ -51,8 +51,8 @@ Reply body text.
 Run the helper command to find threads awaiting a reply:
 
 ```sh
-corky find-unanswered
-corky find-unanswered --from "{owner_name}"
+corky unanswered
+corky unanswered --from "{owner_name}"
 ```
 
 ## Drafting a reply
@@ -111,7 +111,7 @@ on his behalf.
 
 - Read conversations
 - Create and edit drafts
-- Run `corky find-unanswered` and `corky validate-draft`
+- Run `corky unanswered` and `corky validate-draft`
 - Push changes to this repo
 
 ## What only {owner_name} can do
@@ -153,7 +153,7 @@ git pull
 ### 2. Find threads that need a reply
 
 ```sh
-corky find-unanswered
+corky unanswered
 ```
 
 ### 3. Draft a reply

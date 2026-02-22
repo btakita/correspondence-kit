@@ -475,13 +475,25 @@ Alias: `corky mb reset`
 Pull latest, regenerate all template files (AGENTS.md, README.md, CLAUDE.md symlink, .gitignore, voice.md, notify.yml) at `mailboxes/{name}/`, commit, push.
 `--no-sync`: regenerate files without pull/push.
 
-### 5.17 find-unanswered
+### 5.17 unanswered
 
 ```
-corky find-unanswered [--from NAME]
+corky unanswered [SCOPE] [--from NAME]
+corky mailbox unanswered [SCOPE] [--from NAME]
 ```
 
-Scans `conversations/` for threads where the last message sender doesn't match `--from` (default: "Brian"). Designed to run in a mailbox directory.
+Alias: `corky find-unanswered` (hidden, backwards-compatible).
+
+Scans conversations for threads where the last message sender doesn't match `--from`.
+
+Scope argument:
+- Omitted → scan root `conversations/` + all `mailboxes/*/conversations/`
+- `.` → root `conversations/` only
+- `NAME` → `mailboxes/{name}/conversations/` only
+
+`--from` resolution: CLI flag > `[owner] name` in `.corky.toml` > error.
+
+Output is grouped by scope when scanning multiple directories.
 
 Sender regex: `^## (.+?) —` (multiline, em dash)
 

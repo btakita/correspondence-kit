@@ -137,10 +137,14 @@ pub enum Commands {
     },
 
     /// Find threads awaiting a reply
-    FindUnanswered {
+    #[command(alias = "find-unanswered")]
+    Unanswered {
+        /// Scope: "." for root only, mailbox name, or omit for all
+        scope: Option<String>,
+
         /// Name to match as 'your' messages
-        #[arg(long = "from", default_value = "Brian")]
-        from_name: String,
+        #[arg(long = "from")]
+        from_name: Option<String>,
     },
 
     /// Validate draft markdown files
@@ -251,6 +255,16 @@ pub enum MailboxCommands {
 
     /// List registered mailboxes
     List,
+
+    /// Find threads awaiting a reply
+    Unanswered {
+        /// Scope: "." for root only, mailbox name, or omit for all
+        scope: Option<String>,
+
+        /// Name to match as 'your' messages
+        #[arg(long = "from")]
+        from_name: Option<String>,
+    },
 
     /// Pull, regenerate templates, commit & push
     Reset {

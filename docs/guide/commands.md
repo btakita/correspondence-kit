@@ -61,7 +61,9 @@ corky list-folders [ACCOUNT]   # List IMAP folders for an account
 corky push-draft mail/drafts/FILE.md         # Save a draft via IMAP
 corky push-draft mail/drafts/FILE.md --send  # Send via SMTP
 corky add-label LABEL --account NAME         # Add a label to sync config
-corky find-unanswered                        # Find threads awaiting a reply
+corky unanswered                             # Find threads awaiting a reply (all scopes)
+corky unanswered .                           # Root conversations only
+corky unanswered NAME                        # Specific mailbox only
 corky validate-draft FILE                    # Validate draft markdown files
 ```
 
