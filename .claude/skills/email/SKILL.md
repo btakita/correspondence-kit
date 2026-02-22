@@ -15,14 +15,14 @@ Manage and draft correspondence using locally synced email threads.
 - `mail/contacts/{name}/AGENTS.md` — per-contact context for drafting
 - `mail/manifest.toml` — thread index by labels, accounts, contacts
 - `mail/drafts/` — outgoing email drafts being worked on
-- `corky find-unanswered` — list threads awaiting a reply
+- `corky unanswered` — list threads awaiting a reply
 - `corky sync` — re-sync threads from all accounts
 - `corky list-folders ACCOUNT` — list IMAP folders for an account
 
 ## Workflows
 
 ### Review inbox
-1. Run `corky find-unanswered` to identify threads needing a reply
+1. Run `corky unanswered` to identify threads needing a reply
 2. Read each thread and assess priority
 3. Present a prioritized list with a one-line summary per thread
 4. Wait for instruction before drafting anything

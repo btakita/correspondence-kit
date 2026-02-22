@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
 
-use corky::cli::{Cli, Commands, MailboxCommands, SyncCommands};
+use corky::cli::{Cli, Commands, DraftCommands, MailboxCommands, SyncCommands};
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -70,6 +70,7 @@ fn main() -> Result<()> {
             corky::mailbox::find_unanswered::run(scope, &from)
         }
         Commands::ValidateDraft { files } => corky::mailbox::validate_draft::run(&files),
+        Commands::Draft(cmd) => run_draft_command(cmd),
         Commands::Mailbox(cmd) => match cmd {
             MailboxCommands::List => corky::mailbox::list::run(),
             MailboxCommands::Add {
@@ -112,7 +113,17 @@ fn main() -> Result<()> {
                     corky::mailbox::find_unanswered::Scope::from_arg(scope.as_deref());
                 corky::mailbox::find_unanswered::run(scope, &from)
             }
+            MailboxCommands::Draft(cmd) => run_draft_command(cmd),
         },
+    }
+}
+
+fn run_draft_command(cmd: DraftCommands) -> anyhow::Result<()> {
+    match cmd {
+        DraftCommands::Validate { args } => {
+            corky::mailbox::validate_draft::run_scoped(&args)
+        }
+        DraftCommands::Push { file, send } => corky::draft::run(&file, send),
     }
 }
 

@@ -77,6 +77,7 @@ pub enum Commands {
     },
 
     /// Push a draft markdown file as an email draft
+    #[command(hide = true)]
     PushDraft {
         /// Path to the draft markdown file
         file: PathBuf,
@@ -148,11 +149,16 @@ pub enum Commands {
     },
 
     /// Validate draft markdown files
+    #[command(hide = true)]
     ValidateDraft {
         /// Draft markdown file(s) to validate
         #[arg(required = true)]
         files: Vec<PathBuf>,
     },
+
+    /// Draft commands
+    #[command(subcommand)]
+    Draft(DraftCommands),
 
     /// Mailbox commands
     #[command(subcommand, alias = "mb")]
@@ -178,6 +184,24 @@ pub enum SyncCommands {
     Mailbox {
         /// Mailbox name (default: all)
         name: Option<String>,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum DraftCommands {
+    /// Validate draft markdown files
+    Validate {
+        /// Files to validate, or scope: "." for root, mailbox name, omit for all
+        args: Vec<String>,
+    },
+    /// Push a draft as an email draft or send it
+    Push {
+        /// Path to the draft markdown file
+        file: PathBuf,
+
+        /// Send the email immediately instead of saving as a draft
+        #[arg(long)]
+        send: bool,
     },
 }
 
@@ -265,6 +289,10 @@ pub enum MailboxCommands {
         #[arg(long = "from")]
         from_name: Option<String>,
     },
+
+    /// Draft commands
+    #[command(subcommand)]
+    Draft(DraftCommands),
 
     /// Pull, regenerate templates, commit & push
     Reset {

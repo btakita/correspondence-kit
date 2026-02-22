@@ -93,6 +93,127 @@ pub fn validate_draft(path: &Path) -> Vec<String> {
     issues
 }
 
+/// Resolve drafts directories based on scope, same pattern as find_unanswered::resolve_dirs().
+fn resolve_draft_dirs(scope: &super::find_unanswered::Scope) -> Result<Vec<(String, PathBuf)>> {
+    use super::find_unanswered::Scope;
+    use crate::resolve;
+
+    let data = resolve::data_dir();
+    let root_drafts = data.join("drafts");
+    let mailboxes_base = resolve::mailboxes_base_dir();
+
+    let mut dirs = Vec::new();
+
+    match scope {
+        Scope::RootOnly => {
+            dirs.push(("Root".to_string(), root_drafts));
+        }
+        Scope::Mailbox(name) => {
+            let mb_drafts = mailboxes_base.join(name).join("drafts");
+            if !mb_drafts.is_dir() {
+                anyhow::bail!("Mailbox '{}' not found at {}", name, mb_drafts.display());
+            }
+            dirs.push((name.clone(), mb_drafts));
+        }
+        Scope::All => {
+            if root_drafts.is_dir() {
+                dirs.push(("Root".to_string(), root_drafts));
+            }
+            if mailboxes_base.is_dir() {
+                let mut entries: Vec<_> = std::fs::read_dir(&mailboxes_base)?
+                    .filter_map(|e| e.ok())
+                    .filter(|e| e.path().is_dir())
+                    .collect();
+                entries.sort_by_key(|e| e.file_name());
+                for entry in entries {
+                    let drafts = entry.path().join("drafts");
+                    if drafts.is_dir() {
+                        let name = entry.file_name().to_string_lossy().to_string();
+                        dirs.push((name, drafts));
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(dirs)
+}
+
+/// Collect all .md files under a directory.
+fn collect_draft_files(dir: &Path, out: &mut Vec<PathBuf>) -> Result<()> {
+    if !dir.is_dir() {
+        return Ok(());
+    }
+    for entry in std::fs::read_dir(dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_dir() {
+            collect_draft_files(&path, out)?;
+        } else if path.extension().and_then(|e| e.to_str()) == Some("md") {
+            out.push(path);
+        }
+    }
+    Ok(())
+}
+
+/// corky draft validate [ARGS...] — scope-based or file-based validation.
+pub fn run_scoped(args: &[String]) -> Result<()> {
+    use super::find_unanswered::Scope;
+    use crate::resolve;
+
+    // If args look like file paths (any contains '/' or '.' extension), treat as files
+    let as_files = !args.is_empty()
+        && args.iter().all(|a| {
+            a != "." && (a.contains('/') || a.contains('.') || PathBuf::from(a).exists())
+        });
+
+    if as_files {
+        let files: Vec<PathBuf> = args.iter().map(PathBuf::from).collect();
+        return run(&files);
+    }
+
+    // Otherwise parse as scope
+    let scope = if args.is_empty() {
+        Scope::All
+    } else if args.len() == 1 && args[0] == "." {
+        Scope::RootOnly
+    } else if args.len() == 1 {
+        // Check if it's a mailbox name
+        let mailboxes_base = resolve::mailboxes_base_dir();
+        if mailboxes_base.join(&args[0]).join("drafts").is_dir() {
+            Scope::Mailbox(args[0].clone())
+        } else {
+            // Treat as a file path
+            let files: Vec<PathBuf> = args.iter().map(PathBuf::from).collect();
+            return run(&files);
+        }
+    } else {
+        // Multiple args that don't look like files — treat as files anyway
+        let files: Vec<PathBuf> = args.iter().map(PathBuf::from).collect();
+        return run(&files);
+    };
+
+    let dirs = resolve_draft_dirs(&scope)?;
+
+    if dirs.is_empty() {
+        println!("No drafts directories found.");
+        return Ok(());
+    }
+
+    let mut all_files = Vec::new();
+    for (_label, dir) in &dirs {
+        collect_draft_files(dir, &mut all_files)?;
+    }
+
+    if all_files.is_empty() {
+        println!("No draft files found.");
+        return Ok(());
+    }
+
+    all_files.sort();
+    run(&all_files)
+}
+
 /// corky validate-draft FILE [FILE...]
 pub fn run(files: &[PathBuf]) -> Result<()> {
     let mut all_ok = true;

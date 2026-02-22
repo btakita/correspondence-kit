@@ -31,4 +31,4 @@ mailboxes/{name}/
   drafts/            # Where the collaborator writes replies
 ```
 
-The collaborator reads conversations, drafts replies following the documented format, validates with `corky validate-draft`, and pushes. The owner reviews and sends.
+The collaborator reads conversations, drafts replies following the documented format, validates with `corky draft validate`, and pushes. The owner reviews and sends.

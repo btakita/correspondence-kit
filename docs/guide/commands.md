@@ -58,16 +58,24 @@ Gmail OAuth setup. Requires `credentials.json` from Google Cloud Console.
 
 ```sh
 corky list-folders [ACCOUNT]   # List IMAP folders for an account
-corky push-draft mail/drafts/FILE.md         # Save a draft via IMAP
-corky push-draft mail/drafts/FILE.md --send  # Send via SMTP
 corky add-label LABEL --account NAME         # Add a label to sync config
 corky unanswered                             # Find threads awaiting a reply (all scopes)
 corky unanswered .                           # Root conversations only
 corky unanswered NAME                        # Specific mailbox only
-corky validate-draft FILE                    # Validate draft markdown files
 ```
 
-### push-draft
+## Drafts
+
+```sh
+corky draft validate                         # Validate all drafts (root + mailboxes)
+corky draft validate .                       # Validate root drafts only
+corky draft validate NAME                    # Validate drafts in a mailbox
+corky draft validate FILE [FILE...]          # Validate specific files
+corky draft push mail/drafts/FILE.md         # Save a draft via IMAP
+corky draft push mail/drafts/FILE.md --send  # Send via SMTP
+```
+
+### draft push
 
 Default: creates a draft via IMAP APPEND to the drafts folder.
 `--send`: sends via SMTP. Requires Status to be `review` or `approved`. After sending, updates Status to `sent`.

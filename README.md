@@ -44,8 +44,8 @@ See the [getting started guide](https://btakita.github.io/corky/getting-started/
 
 ```sh
 corky sync                      # Incremental IMAP sync
-corky find-unanswered           # Threads awaiting a reply
-corky push-draft FILE           # Save as email draft
+corky unanswered                # Threads awaiting a reply
+corky draft push FILE           # Save as email draft
 corky mailbox add NAME --label LABEL  # Share threads
 corky watch                     # Poll and sync automatically
 corky --help                    # All commands

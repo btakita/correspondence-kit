@@ -33,8 +33,8 @@ Threads are written to `mail/conversations/[slug].md` — one file per thread. L
 
 ```sh
 corky sync                          # Pull new threads
-corky find-unanswered               # See what needs a reply
+corky unanswered                    # See what needs a reply
 # Draft a reply in mail/drafts/
-corky validate-draft mail/drafts/FILE.md   # Check format
-corky push-draft mail/drafts/FILE.md       # Save as email draft
+corky draft validate mail/drafts/FILE.md   # Check format
+corky draft push mail/drafts/FILE.md       # Save as email draft
 ```

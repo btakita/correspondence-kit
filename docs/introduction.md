@@ -24,7 +24,7 @@ Corky is built around files, CLI commands, and git — interfaces that work equa
 
 - **Everything is files.** Threads are Markdown. Config is TOML. Drafts are Markdown.
 - **CLI is the interface.** Every operation is a single `corky` command. Scriptable and composable.
-- **Single-binary install.** One `curl | sh` gives collaborators `corky find-unanswered` and `corky validate-draft`.
+- **Single-binary install.** One `curl | sh` gives collaborators `corky unanswered` and `corky draft validate`.
 - **Self-documenting repos.** Each shared repo ships with `AGENTS.md`, `voice.md`, and a `README.md`.
 
 ## Tech Stack
