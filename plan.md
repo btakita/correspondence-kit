@@ -16,12 +16,12 @@ The existing `contact-add` stays as a hidden backward-compatible alias.
 
 ```
 # New subcommand group
-corky contact add NAME --email EMAIL [--label LABEL] [--account ACCT]
-corky contact add --from SLUG [--name NAME] [--account ACCT]
+corky contact add NAME --email EMAIL
+corky contact add --from SLUG
 corky contact info NAME
 
-# Hidden backward-compatible alias (unchanged behavior)
-corky contact-add NAME --email EMAIL [--label LABEL] [--account ACCT]
+# Hidden backward-compatible alias (remove --label and --account)
+corky contact-add NAME --email EMAIL
 ```
 
 ### `contact add` arguments
@@ -41,14 +41,6 @@ pub enum ContactCommands {
         /// Create from a conversation slug
         #[arg(long, conflicts_with = "emails")]
         from: Option<String>,
-
-        /// Conversation label(s)
-        #[arg(long = "label")]
-        labels: Vec<String>,
-
-        /// Bind to a specific account
-        #[arg(long, default_value = "")]
-        account: String,
     },
 
     /// Show contact info
@@ -71,8 +63,6 @@ Validation (in the handler, not clap):
 Contact: alice
 
   Emails: alice@example.com, alice@work.com
-  Labels: correspondence
-  Account: personal
 
 --- AGENTS.md ---
 # Contact: alice
@@ -243,9 +233,9 @@ Make `generate_agents_md(name)` public (rename to `pub fn default_agents_md`).
 Update the default template to include the new `## Formality` and `## Research`
 sections (both the manual and enriched paths get the same structure).
 
-Add `run_with_agents_md(name, emails, labels, account, agents_md_content)` — shared
-creation logic (directory, symlink, save_contact, print). The existing `run()` calls
-this with `default_agents_md(name)`.
+Add `run_with_agents_md(name, emails, agents_md_content)` — shared creation logic
+(directory, symlink, save_contact, print). The existing `run()` calls this with
+`default_agents_md(name)`.
 
 Add a new function for enriched AGENTS.md:
 
@@ -347,7 +337,7 @@ user can review and edit the `[contacts.{name}]` section in `.corky.toml`.
 Core function:
 
 ```rust
-pub fn run(slug: &str, name: Option<&str>, labels: &[String], account: &str) -> Result<()>
+pub fn run(slug: &str, name: Option<&str>) -> Result<()>
 ```
 
 Algorithm (module doc comment in from_conversation):
@@ -420,12 +410,12 @@ Algorithm (module doc comment in from_conversation):
 Add match arm:
 ```rust
 Commands::Contact(cmd) => match cmd {
-    ContactCommands::Add { name, emails, from, labels, account } => {
+    ContactCommands::Add { name, emails, from } => {
         if let Some(slug) = from {
-            corky::contact::from_conversation::run(&slug, name.as_deref(), &labels, &account)
+            corky::contact::from_conversation::run(&slug, name.as_deref())
         } else {
             let name = name.ok_or_else(|| anyhow::anyhow!("NAME required when not using --from"))?;
-            corky::contact::add::run(&name, &emails, &labels, &account)
+            corky::contact::add::run(&name, &emails)
         }
     }
     ContactCommands::Info { name } => corky::contact::info::run(&name),
@@ -455,7 +445,7 @@ Algorithm:
 
 1. **Load contact from config** — `load_contacts(None)?`. Bail if not found.
 
-2. **Print config section** — emails, labels, account.
+2. **Print config section** — emails.
 
 3. **Print AGENTS.md** — read `contacts/{name}/AGENTS.md` if it exists.
 
@@ -473,6 +463,13 @@ Algorithm:
    (root vs mailbox name) when threads come from multiple manifests.
 
 6. **Print summary** — thread count, last activity date.
+
+### 2.2 Future: `draft push` credential bubbling (out of scope)
+
+When sending from a mailbox, resolve credentials bottom-up: try the leaf
+mailbox's `.corky.toml` first, then walk up to the parent mailbox, then root.
+If no credentials are found at any level, error. This is a separate enhancement
+to `draft push --send` — not part of the contact enrichment feature.
 
 ---
 
@@ -511,8 +508,8 @@ corky contact info NAME              # Show contact details + threads
 
 **Section 5.22 — contact add**
 ```
-corky contact add NAME --email EMAIL [--label LABEL] [--account ACCT]
-corky contact add --from SLUG [--name NAME] [--account ACCT]
+corky contact add NAME --email EMAIL
+corky contact add --from SLUG [--name NAME]
 ```
 
 Document the `--from` flow: find conversation, extract participants (from + to + cc),
