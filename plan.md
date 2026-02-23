@@ -17,7 +17,7 @@ The existing `contact-add` stays as a hidden backward-compatible alias.
 ```
 # New subcommand group
 corky contact add NAME --email EMAIL
-corky contact add --from SLUG [--name NAME]
+corky contact add --from SLUG [NAME]
 corky contact info NAME
 
 # Hidden backward-compatible alias (remove --label and --account)
@@ -55,7 +55,7 @@ Validation (in the handler, not clap):
 - `--from` without `--email`: OK (derive from conversation)
 - `--email` without `--from`: requires `name` positional
 - Both `--from` and `--email`: clap `conflicts_with` prevents this
-- `--from` with multiple senders and no `--name`: print candidates, bail
+- `--from` with multiple senders and no `name`: print candidates, bail
 
 ### `contact info` output
 
@@ -257,6 +257,7 @@ pub fn enriched_agents_md(
     name: &str,
     topics: &[String],
     other_participants: &[String],
+    email_domain: Option<&str>,  // e.g. "example.com" for Research hints
 ) -> String
 ```
 
@@ -336,7 +337,7 @@ conversation that are *not* the contact being created. If the list is empty
 
 **Name derivation**: The contact directory name is derived by slugifying the
 display name from the email header (e.g. `Alice Smith` -> `alice-smith`).
-The `--name` flag overrides this. The slugify function is the existing
+The positional `name` argument overrides this. The slugify function is the existing
 `crate::util::slugify()`.
 
 **Multiple emails**: If the same person appears with different email addresses
@@ -378,12 +379,12 @@ Algorithm (module doc comment in from_conversation):
 
 5. **Handle participant count**:
    - 0 participants: bail "No non-owner participants found in this conversation"
-   - 1 participant: auto-derive name from display name (slugify), use `--name`
-     override if given
-   - 2+ participants: if `--name` given, find matching participant; otherwise print
-     candidates and bail "Multiple participants found. Use --name to select one."
+   - 1 participant: auto-derive name from display name (slugify), use positional
+     `name` override if given
+   - 2+ participants: if `name` given, find matching participant; otherwise print
+     candidates and bail "Multiple participants found. Specify name to select one."
 
-   If the auto-derived slug is wrong, the user can re-run with `--name` to
+   If the auto-derived slug is wrong, the user can re-run with the name positional to
    override. A future `corky contact rename` command could rename an existing
    contact directory — out of scope for this feature.
 
@@ -410,10 +411,11 @@ Algorithm (module doc comment in from_conversation):
 7. **Collect other participants** — from the full participant list, remove the
    selected contact. These become `other_participants` for the AGENTS.md template.
 
-8. **Generate enriched AGENTS.md** — call
-   `enriched_agents_md(name, &[subject], &other_participants)`.
-   Pre-fills Topics with the thread subject and Tone with shared-thread hints.
-   See section 1.3 for the full template.
+8. **Generate enriched AGENTS.md** — extract email domain from the contact's
+   primary email address (e.g. `alice@example.com` → `"example.com"`). Call
+   `enriched_agents_md(name, &[subject], &other_participants, domain.as_deref())`.
+   Pre-fills Topics with the thread subject, Tone with shared-thread hints,
+   and Research with the email domain. See section 1.3 for the full template.
 
 9. **Delegate to `add::run_with_agents_md()`** — shared creation logic
    (directory, symlink, save_contact, print).
@@ -477,7 +479,11 @@ Algorithm:
 
 6. **Print summary** — thread count, last activity date.
 
-### 2.2 `draft push` credential bubbling
+---
+
+## Phase 3: Email Skill + Docs
+
+### 3.0 `draft push` credential bubbling
 
 Child mailboxes may not have their own IMAP/SMTP credentials — they rely on
 the parent's `.corky.toml` accounts to send. When `draft push --send` runs
@@ -499,10 +505,6 @@ for the `**From**` email address. First match wins.
 resolution logic, if the current data dir is inside a `mailboxes/` subtree,
 walk parent directories checking each `.corky.toml` for an account whose
 `user` matches the From address.
-
----
-
-## Phase 3: Email Skill + Docs
 
 ### 3.1 `.claude/skills/email/SKILL.md` — add contact workflow
 
@@ -538,7 +540,7 @@ corky contact info NAME              # Show contact details + threads
 **Section 5.22 — contact add**
 ```
 corky contact add NAME --email EMAIL
-corky contact add --from SLUG [--name NAME]
+corky contact add --from SLUG [NAME]
 ```
 
 Document the `--from` flow: find conversation, extract participants (from + to + cc),
@@ -566,8 +568,8 @@ Replace single `contact-add` line with full section covering both commands.
 
 - Single participant conversation: creates contact with correct name/email
 - Contact found via To/CC (never sent a message): still detected
-- Multiple participants without `--name`: prints candidates, exits 1
-- Multiple participants with `--name`: creates correct contact
+- Multiple participants without name: prints candidates, exits 1
+- Multiple participants with name: creates correct contact
 - Conversation not found: helpful error message
 - No non-owner participants: appropriate error
 - Contact already exists: bail
@@ -597,36 +599,37 @@ Replace single `contact-add` line with full section covering both commands.
 
 ## New/Modified Files
 
-| File | Change |
-|------|--------|
-| `src/sync/types.rs` | Add `to` and `cc` fields to `Message` |
-| `src/sync/imap_sync.rs` | Parse To/CC headers |
-| `src/sync/markdown.rs` | Serialize/parse per-message `**To**:`/`**CC**:` lines |
-| `src/sync/manifest.rs` | Match contacts by from + to + cc |
-| `src/contact/from_conversation.rs` | **New** — find conversation, extract participants, create enriched contact |
-| `src/contact/info.rs` | **New** — aggregate and display contact info |
-| `src/contact/mod.rs` | Add new modules |
-| `src/contact/add.rs` | Make `generate_agents_md` public, add `enriched_agents_md` + `run_with_agents_md` |
-| `src/cli.rs` | Add `ContactCommands` enum, `Contact` subcommand, keep hidden `ContactAdd` |
-| `src/main.rs` | Dispatch for `Contact(cmd)` |
-| `src/help.rs` | Update command reference |
-| `src/draft/push.rs` | Credential bubbling: walk parent dirs for account match |
-| `.claude/skills/email/SKILL.md` | Add contact commands and workflow |
-| `.claude/skills/email/README.md` | Add commands to table |
-| `SPECS.md` | Update §3.1, §4.6, §6.3; add §5.22, §5.23 |
-| `docs/guide/commands.md` | Update contacts section |
-| `docs/reference/specs.md` | Mirror SPECS.md |
-| `tests/test_contact_from_conversation.rs` | Integration tests |
-| `tests/test_contact_info.rs` | Integration tests |
-| `tests/test_draft_push.rs` | Credential bubbling tests |
-| `tests/test_cli.rs` | CLI parsing tests |
+| File | Phase | Change |
+|------|-------|--------|
+| `src/sync/types.rs` | 0 | Add `to` and `cc` fields to `Message` |
+| `src/sync/imap_sync.rs` | 0 | Parse To/CC headers |
+| `src/sync/markdown.rs` | 0 | Serialize/parse per-message `**To**:`/`**CC**:` lines |
+| `src/sync/manifest.rs` | 0 | Match contacts by from + to + cc |
+| `src/cli.rs` | 1 | Add `ContactCommands` enum, `Contact` subcommand, keep hidden `ContactAdd` |
+| `src/main.rs` | 1 | Dispatch for `Contact(cmd)` |
+| `src/help.rs` | 1 | Update command reference |
+| `src/config/contact.rs` | 1 | Simplify `Contact` struct to `{ emails }`, update `save_contact()` |
+| `src/contact/add.rs` | 1 | Make `generate_agents_md` public, add `enriched_agents_md` + `run_with_agents_md`, update `run()` signature |
+| `src/contact/from_conversation.rs` | 1 | **New** — find conversation, extract participants, create enriched contact |
+| `src/contact/info.rs` | 2 | **New** — aggregate and display contact info |
+| `src/contact/mod.rs` | 1 | Add new modules |
+| `src/draft/push.rs` | 3 | Credential bubbling: walk parent dirs for account match |
+| `.claude/skills/email/SKILL.md` | 3 | Add contact commands and workflow |
+| `.claude/skills/email/README.md` | 3 | Add commands to table |
+| `SPECS.md` | 0-3 | Update §3.1, §4.6, §6.3; add §5.22, §5.23 (updated per commit) |
+| `docs/guide/commands.md` | 3 | Update contacts section |
+| `docs/reference/specs.md` | 3 | Mirror SPECS.md |
+| `tests/test_contact_from_conversation.rs` | 1 | Integration tests |
+| `tests/test_contact_info.rs` | 2 | Integration tests |
+| `tests/test_draft_push.rs` | 3 | Credential bubbling tests |
+| `tests/test_cli.rs` | 1 | CLI parsing tests |
 
 ## Edge Cases
 
 - **Contact already exists** — bail with message (existing behavior)
 - **Conversation not found** — search root + all mailboxes, bail with "not found" listing searched paths
 - **No non-owner participants** — bail "No non-owner participants found"
-- **Multiple participants** — print list with index, require `--name`
+- **Multiple participants** — print list with index, require positional `name`
 - **`--from` and `--email` both given** — clap `conflicts_with` rejects
 - **No manifest.toml** — `contact info` prints config + AGENTS.md, shows "No manifest.toml found" note
 - **Participant has no `<email>`** — skip (some messages may have bare names)
