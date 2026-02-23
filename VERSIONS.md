@@ -14,7 +14,7 @@ Contact enrichment, To/CC sync, credential bubbling.
 - **BREAKING CHANGE: `Contact` struct simplified**: `labels` and `account` fields removed from `[contacts.*]` in `.corky.toml`. Existing files with these fields are silently ignored on parse. `--label` and `--account` flags on `contact-add` alias are accepted but ignored.
 - **To/CC in sync pipeline**: Messages now store To and CC headers. Conversation markdown includes per-message `**To**:`/`**CC**:` lines. Manifest matches contacts by from, to, and cc. Old files without these lines parse correctly.
 - **Credential bubbling**: `draft push` walks parent directories for `.corky.toml` with matching account credentials when drafting from child mailboxes.
-- **Release workflow fix**: Pin `cross` to v0.2.5 for aarch64-linux builds.
+- **Release workflow fix**: Vendor OpenSSL for aarch64-linux cross builds, update macOS runner to `macos-14`, add `fail-fast: false` to build matrix.
 
 ## 0.7.3
 
