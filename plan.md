@@ -2,7 +2,7 @@
 
 ## Overview
 
-Three phases:
+Four phases:
 0. **Sync pipeline: To/CC** — store recipient addresses so contacts are matched
    by what they *see*, not just what they *send*
 1. **`corky contact add --from SLUG`** — create a contact from a conversation
@@ -17,7 +17,7 @@ The existing `contact-add` stays as a hidden backward-compatible alias.
 ```
 # New subcommand group
 corky contact add NAME --email EMAIL
-corky contact add --from SLUG
+corky contact add --from SLUG [--name NAME]
 corky contact info NAME
 
 # Hidden backward-compatible alias (remove --label and --account)
@@ -213,10 +213,20 @@ Add `ContactCommands` enum (above). Add to `Commands`:
 Contact(ContactCommands),
 ```
 
-Keep existing `ContactAdd` variant but mark hidden:
+Keep existing `ContactAdd` variant but mark hidden. The clap struct retains
+`--label` and `--account` flags so old invocations don't error, but the handler
+ignores them — passes only `name` and `emails` to `add::run()`:
 ```rust
 #[command(hide = true)]
-ContactAdd { ... }  // unchanged
+ContactAdd {
+    name: String,
+    #[arg(long = "email", required = true)]
+    emails: Vec<String>,
+    #[arg(long = "label")]
+    labels: Vec<String>,     // parsed but ignored
+    #[arg(long, default_value = "")]
+    account: String,         // parsed but ignored
+}
 ```
 
 ### 1.2 `src/contact/mod.rs` — add modules
@@ -233,8 +243,11 @@ Make `generate_agents_md(name)` public (rename to `pub fn default_agents_md`).
 Update the default template to include the new `## Formality` and `## Research`
 sections (both the manual and enriched paths get the same structure).
 
-Add `run_with_agents_md(name, emails, agents_md_content)` — shared creation logic
-(directory, symlink, save_contact, print). The existing `run()` calls this with
+Update `run()` signature to `run(name, emails)` — drop `labels` and `account`
+params. Remove the label-to-account sync logic (lines 67-83 in current code).
+
+Extract shared creation logic into `run_with_agents_md(name, emails, agents_md_content)`
+(directory, symlink, save_contact, print). `run()` calls this with
 `default_agents_md(name)`.
 
 Add a new function for enriched AGENTS.md:
@@ -244,7 +257,6 @@ pub fn enriched_agents_md(
     name: &str,
     topics: &[String],
     other_participants: &[String],
-    email_domain: Option<&str>,  // e.g. "example.com" for Research hints
 ) -> String
 ```
 
@@ -309,7 +321,8 @@ professional
 
 ## Research
 
-<!-- Where to look for more details about this contact. -->
+<!-- Where to look for more details about this contact.
+     Email domain derived from contact's email address. -->
 - Email domain: example.com
 
 ## Notes
@@ -477,6 +490,16 @@ from a mailbox context, resolve credentials bottom-up:
 This is needed for the collaboration workflow where a child mailbox drafts
 a reply and the parent's account sends it.
 
+**Parent discovery**: A child mailbox doesn't store a parent reference. Corky
+discovers the hierarchy by walking the filesystem upward from the draft's
+directory, looking for `.corky.toml` files with matching account credentials
+for the `**From**` email address. First match wins.
+
+**Implementation**: Modify `src/draft/push.rs` — before the existing account
+resolution logic, if the current data dir is inside a `mailboxes/` subtree,
+walk parent directories checking each `.corky.toml` for an account whose
+`user` matches the From address.
+
 ---
 
 ## Phase 3: Email Skill + Docs
@@ -557,6 +580,13 @@ Replace single `contact-add` line with full section covering both commands.
 - Contact exists, no manifest: prints config + AGENTS.md, skip threads
 - Contact not found: error message
 
+**`tests/test_draft_push.rs`** — credential bubbling:
+
+- Child mailbox with no credentials: resolves parent account by From address
+- Child mailbox with own credentials: uses own account (no bubbling)
+- No credentials at any level: error message
+- Nested hierarchy (child > parent > root): finds first match
+
 **`tests/test_cli.rs`** — CLI parsing:
 
 - `contact add NAME --email EMAIL` parses correctly
@@ -580,6 +610,7 @@ Replace single `contact-add` line with full section covering both commands.
 | `src/cli.rs` | Add `ContactCommands` enum, `Contact` subcommand, keep hidden `ContactAdd` |
 | `src/main.rs` | Dispatch for `Contact(cmd)` |
 | `src/help.rs` | Update command reference |
+| `src/draft/push.rs` | Credential bubbling: walk parent dirs for account match |
 | `.claude/skills/email/SKILL.md` | Add contact commands and workflow |
 | `.claude/skills/email/README.md` | Add commands to table |
 | `SPECS.md` | Update §3.1, §4.6, §6.3; add §5.22, §5.23 |
@@ -587,6 +618,7 @@ Replace single `contact-add` line with full section covering both commands.
 | `docs/reference/specs.md` | Mirror SPECS.md |
 | `tests/test_contact_from_conversation.rs` | Integration tests |
 | `tests/test_contact_info.rs` | Integration tests |
+| `tests/test_draft_push.rs` | Credential bubbling tests |
 | `tests/test_cli.rs` | CLI parsing tests |
 
 ## Edge Cases
