@@ -122,6 +122,15 @@ Follow a research → plan → implement cycle. Never write code until the plan 
    during this phase.
 5. **Precommit** — Run `make precommit` and `corky audit-docs` before committing.
 
+## PR Process
+
+- Feature work happens on a branch with a PR.
+- `research.md` and `plan.md` are committed to the branch for iteration (they are
+  gitignored on main). Before the squash merge, remove them from the branch so they
+  never land on main.
+- PRs use **squash merge** — the branch history (including research/plan commits)
+  collapses into one clean commit on main.
+
 ## Conventions
 
 - Use `make check` (clippy + test), `make release` (build + .bin symlink) for development
