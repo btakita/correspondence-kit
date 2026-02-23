@@ -60,6 +60,7 @@ pub fn parse_msg_date(date_str: &str) -> DateTime<Utc> {
 }
 
 /// Set file mtime to the parsed date.
+#[allow(unused_variables)]
 fn set_mtime(path: &Path, date_str: &str) -> Result<()> {
     let dt = parse_msg_date(date_str);
     if dt.year() <= 1970 {

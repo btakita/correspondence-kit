@@ -12,6 +12,7 @@ use crate::sync::imap_sync::sync_account;
 use crate::sync::types::SyncState;
 
 /// Desktop notification (best-effort).
+#[allow(unused_variables)]
 fn notify(title: &str, body: &str) {
     #[cfg(target_os = "macos")]
     {
