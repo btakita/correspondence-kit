@@ -4,6 +4,11 @@ Corky is alpha software. Expect breaking changes between minor versions.
 
 Use `BREAKING CHANGE:` prefix in version entries to flag incompatible changes.
 
+## 0.9.3
+
+- **Upgrade check**: Queries crates.io for latest version with a 24h cache. Prints a one-line stderr warning on startup if outdated.
+- **`corky upgrade`**: New subcommand tries `cargo install` then `pip install --upgrade`, or prints manual instructions.
+
 ## 0.9.2
 
 Contact sync v2: conversation-aware eligibility + 3-way merge.
