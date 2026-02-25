@@ -6,16 +6,16 @@ use regex::Regex;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+use crate::draft;
+
 static META_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"(?m)^\*\*(.+?)\*\*:\s*(.+)$").unwrap());
 
 const REQUIRED_FIELDS: &[&str] = &["To"];
 const RECOMMENDED_FIELDS: &[&str] = &["Status", "Author"];
-const VALID_STATUSES: &[&str] = &["draft", "review", "approved", "sent"];
+const VALID_STATUSES: &[&str] = &["draft", "review", "approved", "sent", "scheduled"];
 
 /// Validate a draft file. Returns list of issues (empty = valid).
 pub fn validate_draft(path: &Path) -> Vec<String> {
-    let mut issues = Vec::new();
-
     if !path.exists() {
         return vec![format!("File not found: {}", path.display())];
     }
@@ -24,6 +24,84 @@ pub fn validate_draft(path: &Path) -> Vec<String> {
         Ok(t) => t,
         Err(e) => return vec![format!("Cannot read {}: {}", path.display(), e)],
     };
+
+    if draft::is_yaml_format(&text) {
+        return validate_yaml_draft(&text);
+    }
+
+    validate_legacy_draft(&text)
+}
+
+/// Validate a YAML frontmatter draft.
+fn validate_yaml_draft(text: &str) -> Vec<String> {
+    let mut issues = Vec::new();
+
+    // Try to parse the YAML frontmatter
+    let meta = match draft::parse_draft_yaml(text) {
+        Some(m) => m,
+        None => {
+            issues.push("Invalid YAML frontmatter: could not parse".to_string());
+            return issues;
+        }
+    };
+
+    // Extract body (everything after the closing ---)
+    let after_first = &text[4..]; // skip "---\n"
+    let body_section = if let Some(end) = after_first.find("\n---") {
+        let body_start = end + 4;
+        if body_start < after_first.len() {
+            after_first[body_start..].trim().to_string()
+        } else {
+            String::new()
+        }
+    } else {
+        issues.push("Missing closing YAML frontmatter delimiter `---`".to_string());
+        return issues;
+    };
+
+    // Check for subject heading in body
+    let has_subject = body_section.lines().any(|line| line.starts_with("# "));
+    if !has_subject {
+        issues.push("Missing subject: no '# Subject' heading found in body".to_string());
+    }
+
+    // Required: to
+    if meta.to.is_empty() {
+        issues.push("Missing required field: to".to_string());
+    }
+
+    // Recommended: status, author
+    if meta.author.is_none() {
+        issues.push("Warning: missing recommended field: author".to_string());
+    }
+
+    // Status validation
+    let status = meta.status.to_lowercase();
+    if !status.is_empty() && !VALID_STATUSES.contains(&status.as_str()) {
+        issues.push(format!(
+            "Invalid status '{}'. Valid: {}",
+            meta.status,
+            VALID_STATUSES.join(", ")
+        ));
+    }
+
+    if status == "draft" {
+        issues.push(
+            "Warning: Status is 'draft'. Set to 'review' when ready for review".to_string(),
+        );
+    }
+
+    // Check body exists
+    if body_section.is_empty() || body_section.lines().all(|l| l.starts_with("# ") || l.trim().is_empty()) {
+        issues.push("Warning: empty body after subject heading".to_string());
+    }
+
+    issues
+}
+
+/// Validate a legacy `**Key**: value` format draft.
+fn validate_legacy_draft(text: &str) -> Vec<String> {
+    let mut issues = Vec::new();
     let lines: Vec<&str> = text.split('\n').collect();
 
     // Check for subject heading
@@ -34,7 +112,7 @@ pub fn validate_draft(path: &Path) -> Vec<String> {
 
     // Parse metadata fields
     let mut meta: HashMap<String, String> = HashMap::new();
-    for cap in META_RE.captures_iter(&text) {
+    for cap in META_RE.captures_iter(text) {
         meta.insert(cap[1].to_string(), cap[2].trim().to_string());
     }
 
@@ -64,7 +142,7 @@ pub fn validate_draft(path: &Path) -> Vec<String> {
         issues.push(format!(
             "Invalid status '{}'. Valid: {}",
             meta.get("Status").unwrap(),
-            VALID_STATUSES.to_vec().join(", ")
+            VALID_STATUSES.join(", ")
         ));
     }
 

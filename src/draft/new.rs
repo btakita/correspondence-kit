@@ -56,7 +56,7 @@ fn unique_path(dir: &std::path::Path, date: &str, slug: &str) -> PathBuf {
     }
 }
 
-/// Render the draft markdown content.
+/// Render the draft markdown content in YAML frontmatter format.
 fn render(
     subject: &str,
     to: &str,
@@ -66,28 +66,31 @@ fn render(
     in_reply_to: Option<&str>,
     author: &str,
 ) -> String {
-    let mut lines = Vec::new();
-    lines.push(format!("# {}", subject));
-    lines.push(String::new());
-    lines.push(format!("**To**: {}", to));
+    let mut fm_lines = Vec::new();
+    fm_lines.push(format!("to: {}", to));
     if let Some(cc) = cc {
-        lines.push(format!("**CC**: {}", cc));
+        fm_lines.push(format!("cc: {}", cc));
     }
-    lines.push("**Status**: draft".to_string());
+    fm_lines.push("status: draft".to_string());
     if !author.is_empty() {
-        lines.push(format!("**Author**: {}", author));
+        fm_lines.push(format!("author: {}", author));
     }
     if let Some(account) = account {
-        lines.push(format!("**Account**: {}", account));
+        fm_lines.push(format!("account: {}", account));
     }
     if let Some(from) = from {
-        lines.push(format!("**From**: {}", from));
+        fm_lines.push(format!("from: {}", from));
     }
     if let Some(in_reply_to) = in_reply_to {
-        lines.push(format!("**In-Reply-To**: {}", in_reply_to));
+        fm_lines.push(format!("in_reply_to: \"{}\"", in_reply_to));
     }
-    lines.push(String::new());
+
+    let mut lines = Vec::new();
     lines.push("---".to_string());
+    lines.extend(fm_lines);
+    lines.push("---".to_string());
+    lines.push(String::new());
+    lines.push(format!("# {}", subject));
     lines.push(String::new());
     lines.join("\n") + "\n"
 }
@@ -99,12 +102,16 @@ mod tests {
     #[test]
     fn test_render_minimal() {
         let out = render("Hello", "a@b.com", None, None, None, None, "");
-        assert!(out.starts_with("# Hello\n"));
-        assert!(out.contains("**To**: a@b.com\n"));
-        assert!(out.contains("**Status**: draft\n"));
-        assert!(!out.contains("**Author**"));
-        assert!(!out.contains("**CC**"));
-        assert!(out.ends_with("---\n\n"));
+        assert!(out.starts_with("---\n"));
+        assert!(out.contains("to: a@b.com\n"));
+        assert!(out.contains("status: draft\n"));
+        assert!(!out.contains("author:"));
+        assert!(!out.contains("cc:"));
+        assert!(out.contains("# Hello\n"));
+        // Subject is after the frontmatter
+        let parts: Vec<&str> = out.splitn(3, "---").collect();
+        assert_eq!(parts.len(), 3);
+        assert!(parts[2].contains("# Hello"));
     }
 
     #[test]
@@ -118,11 +125,35 @@ mod tests {
             Some("<msg-1>"),
             "Alice",
         );
-        assert!(out.contains("**CC**: c@d.com\n"));
-        assert!(out.contains("**Author**: Alice\n"));
-        assert!(out.contains("**Account**: personal\n"));
-        assert!(out.contains("**From**: me@x.com\n"));
-        assert!(out.contains("**In-Reply-To**: <msg-1>\n"));
+        assert!(out.contains("cc: c@d.com\n"));
+        assert!(out.contains("author: Alice\n"));
+        assert!(out.contains("account: personal\n"));
+        assert!(out.contains("from: me@x.com\n"));
+        assert!(out.contains("in_reply_to: \"<msg-1>\"\n"));
+        assert!(out.contains("# Test\n"));
+    }
+
+    #[test]
+    fn test_render_produces_parseable_yaml() {
+        let out = render(
+            "Test Subject",
+            "a@b.com",
+            Some("c@d.com"),
+            Some("personal"),
+            Some("me@x.com"),
+            None,
+            "Alice",
+        );
+        // Should be parseable by the YAML parser
+        assert!(out.starts_with("---\n"));
+        let after_first = &out[4..];
+        let end = after_first.find("\n---").unwrap();
+        let yaml_str = &after_first[..end];
+        let meta: crate::draft::EmailDraftMeta = serde_yaml::from_str(yaml_str).unwrap();
+        assert_eq!(meta.to, "a@b.com");
+        assert_eq!(meta.cc.as_deref(), Some("c@d.com"));
+        assert_eq!(meta.status, "draft");
+        assert_eq!(meta.author.as_deref(), Some("Alice"));
     }
 
     #[test]

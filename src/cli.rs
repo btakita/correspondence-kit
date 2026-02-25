@@ -173,6 +173,14 @@ pub enum Commands {
     #[command(subcommand)]
     Social(SocialCommands),
 
+    /// Scheduled publishing commands
+    #[command(subcommand)]
+    Schedule(ScheduleCommands),
+
+    /// Topic management commands
+    #[command(subcommand)]
+    Topics(TopicCommands),
+
     /// Check for updates and upgrade to the latest version.
     Upgrade,
 }
@@ -280,6 +288,12 @@ pub enum DraftCommands {
         /// Send the email immediately instead of saving as a draft
         #[arg(long)]
         send: bool,
+    },
+    /// Migrate legacy drafts to YAML frontmatter
+    Migrate {
+        /// Show what would change without writing
+        #[arg(long)]
+        dry_run: bool,
     },
 }
 
@@ -439,6 +453,60 @@ pub enum SocialCommands {
 
         /// New author name
         new: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ScheduleCommands {
+    /// Process due scheduled items (publish/send)
+    Run {
+        /// Show what would be published without doing it
+        #[arg(long)]
+        dry_run: bool,
+    },
+
+    /// List all pending scheduled items
+    List,
+}
+
+#[derive(Subcommand)]
+pub enum TopicCommands {
+    /// List configured topics
+    List {
+        /// Show detailed info for each topic
+        #[arg(long, short)]
+        verbose: bool,
+    },
+
+    /// Add a new topic to .corky.toml
+    Add {
+        /// Topic name
+        name: String,
+
+        /// Keywords for matching conversations
+        #[arg(long = "keyword", value_delimiter = ',')]
+        keywords: Vec<String>,
+
+        /// Topic description
+        #[arg(long)]
+        description: Option<String>,
+    },
+
+    /// Show topic details and matching conversations
+    Info {
+        /// Topic name
+        name: String,
+    },
+
+    /// Auto-discover topic candidates from conversations
+    Suggest {
+        /// Maximum number of suggestions
+        #[arg(long, default_value = "10")]
+        limit: usize,
+
+        /// Restrict to a specific mailbox
+        #[arg(long)]
+        mailbox: Option<String>,
     },
 }
 

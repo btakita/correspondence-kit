@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 
 use crate::accounts::{Account, OwnerConfig, WatchConfig};
 use crate::config::contact::Contact;
+use crate::config::topic::TopicConfig;
 use crate::resolve;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -25,6 +26,8 @@ pub struct CorkyConfig {
     pub watch: Option<WatchConfig>,
     #[serde(default)]
     pub social: Option<SocialConfig>,
+    #[serde(default)]
+    pub topics: HashMap<String, TopicConfig>,
 }
 
 /// Social platform OAuth client config (lives in .corky.toml under [social]).

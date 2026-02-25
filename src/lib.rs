@@ -13,5 +13,7 @@ pub mod util;
 pub mod watch;
 pub mod help;
 pub mod audit_docs;
+pub mod schedule;
 pub mod social;
+pub mod topics;
 pub mod upgrade;

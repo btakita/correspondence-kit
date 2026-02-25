@@ -67,6 +67,25 @@ Mailbox resolution (when no explicit name given):
 3. Multiple mailboxes, no default → error with list
 4. No mailboxes → return None (fall through to step 4)
 
+### 2.5 Directory Naming Convention
+
+| Directory | Purpose | Name rationale |
+|---|---|---|
+| `mail/` | Corky data root | Short, familiar, Unix precedent (`maildir`, `/var/mail`). Avoids `mailbox/mailboxes/` stutter. |
+| `mailboxes/` | Collaborator namespace | Namespace boundary — prevents collisions between mailbox names and system dirs (`social/`, `contacts/`). |
+| `social/` | Social media drafts | Channel-specific content at data root level. |
+| `contacts/` | Contact registry | Shared across all mailboxes. |
+
+**Why "mailbox" internally, "mail" as directory:**
+- "Mailbox" is the correct abstraction — per-entity message collection (actor model, Hewitt 1973)
+- `mail/` is shorthand for the data root; it doesn't need to carry the full semantic weight
+- `mailbox/` was considered but creates `mailbox/mailboxes/` path stutter
+- `comms/` rejected — militaristic tone clashes with "corky"
+- `correspondence/` rejected — too long (15 chars)
+- Flatten approaches rejected — namespace collisions between mailbox names and system dirs
+
+**The `mailboxes/` subdir is load-bearing architecture**, not cosmetic. It prevents a collaborator named "social" or "contacts" from colliding with system directories. Do not flatten without solving the namespace problem first.
+
 ## 3. File Formats
 
 ### 3.1 Conversation Markdown
@@ -102,6 +121,32 @@ Message header regex: `^## (.+?) — (.+)$` (multiline, em dash U+2014)
 
 ### 3.2 Draft Markdown
 
+Drafts use YAML frontmatter with the subject as a Markdown heading in the body:
+
+```markdown
+---
+to: alice@example.com
+cc: bob@example.com
+status: draft
+author: Brian
+account: personal
+from: brian@example.com
+in_reply_to: "<msg-id>"
+scheduled_at: null
+---
+
+# Subject Line
+
+Body text here.
+```
+
+Required fields: `# Subject` heading (in body), `to`, `---` delimiters
+Recommended fields: `status`, `author`
+Status values: `draft` → `review` → `approved` → `scheduled` → `sent`
+Valid send statuses (for draft push --send): `review`, `approved`, `scheduled`
+
+**Legacy format:** The `**Key**: value` format is still supported for backward compatibility:
+
 ```markdown
 # {Subject}
 
@@ -118,10 +163,7 @@ Message header regex: `^## (.+?) — (.+)$` (multiline, em dash U+2014)
 {Draft body}
 ```
 
-Required fields: `# Subject` heading, `**To**`, `---` separator
-Recommended fields: `**Status**`, `**Author**`
-Status values: `draft` → `review` → `approved` → `sent`
-Valid send statuses (for draft push --send): `review`, `approved`
+`corky draft migrate [--dry-run]` converts legacy drafts to YAML frontmatter format.
 
 ### 3.3 .corky.toml
 
@@ -447,7 +489,7 @@ corky mailbox sync [NAME]
 
 Alias: `corky mb sync`
 
-For each mailbox (or one named): git pull --rebase, copy voice.md if newer, sync GitHub Actions workflow, stage+commit+push local changes, update submodule ref in parent. Skips git ops for plain (non-submodule) directories.
+For each mailbox (or one named): git pull --rebase, copy voice.md if newer, sync GitHub Actions workflow, bidirectional topic sync (§7.7), stage+commit+push local changes, update submodule ref in parent. Skips git ops for plain (non-submodule) directories.
 
 ### 5.13 mailbox status
 
@@ -714,8 +756,9 @@ With `--github` (submodule):
 1. `git pull --rebase` in submodule (skipped for plain directories)
 2. Copy `voice.md` if root copy is newer
 3. Sync workflow template if newer
-4. Stage, commit, push local changes (skipped for plain directories)
-5. Update submodule ref in parent (`git add {submodule_path}`) (skipped for plain directories)
+4. **Bidirectional topic sync** (see §7.7)
+5. Stage, commit, push local changes (skipped for plain directories)
+6. Update submodule ref in parent (`git add {submodule_path}`) (skipped for plain directories)
 
 ### 7.3 Status
 
@@ -749,6 +792,45 @@ Then:
 3. Stage, commit, push (submodules only)
 4. Update submodule ref in parent (submodules only)
 
+### 7.7 Topic Sync
+
+Topics are bidirectionally synced between root and mailbox during `corky mailbox sync`.
+
+**Configuration:** Topics opt in via the `mailboxes` field in `.corky.toml`:
+
+```toml
+[topics.brian-takita]
+keywords = ["corky", "agent-doc"]
+mailboxes = ["lucas"]
+description = "Personal brand and tooling identity"
+```
+
+**Directory mapping:**
+- Root: `topics/{name}/` (e.g., `topics/brian-takita/README.md`)
+- Mailbox: `mailboxes/{mailbox}/topics/{name}/` (e.g., `mailboxes/lucas/topics/brian-takita/README.md`)
+
+**Algorithm:**
+
+1. Load topics from `.corky.toml`, filter by `mailboxes` containing the current mailbox name
+2. For each matching topic, collect all files from both root and mailbox topic directories
+3. For each file in the union:
+   - **Forward (root → mailbox):** Copy if root file is newer or mailbox file is missing
+   - **Reverse (mailbox → root):** Copy if mailbox file is newer or root file is missing
+4. Newer file wins (mtime comparison). Missing files are always copied.
+
+**Edge cases:**
+
+| # | Case | Behavior |
+|---|---|---|
+| TS1 | No topics list this mailbox | No-op |
+| TS2 | Root topic dir exists, mailbox doesn't | Forward copy creates mailbox topic dir |
+| TS3 | Mailbox topic dir exists, root doesn't | Reverse copy creates root topic dir |
+| TS4 | Both exist, root newer | Forward copy (root wins) |
+| TS5 | Both exist, mailbox newer | Reverse copy (mailbox wins) |
+| TS6 | New file on one side only | Copied to other side |
+| TS7 | Different files on each side | Both copied (union of files) |
+| TS8 | Subdirectories in topic | Recursively synced |
+
 ## 8. Draft Lifecycle
 
 ### 8.1 Create
@@ -780,6 +862,7 @@ while not shutdown:
     if count_new > 0:
         sync_mailboxes()
         notify(count_new)
+    schedule_run()          # publish any due scheduled items (email + social)
     wait(interval) or shutdown
 ```
 
@@ -993,4 +1076,80 @@ corky social rename-author <old> <new>            # Rename across drafts + profi
 | PB8 | Network error during API call | Error propagated with context |
 | PB9 | API error response (403, etc.) | Error with HTTP status + body |
 | PB10 | Body exceeds 3000 char limit | Error with char count |
+
+## 13. Scheduling
+
+Unified scheduling for social media posts and email drafts. A single `schedule` module scans both draft systems and dispatches to their existing publish paths.
+
+### 13.1 Architecture
+
+`corky/src/schedule.rs` — single-file module, no traits or shared abstractions.
+
+**Types:**
+- `ScheduledKind` — enum: `Social`, `Email`
+- `ScheduledItem` — `{ path, kind, scheduled_at, label }`
+- `ProcessResult` — `{ path, kind, success, message }`
+
+**Flow:**
+1. Scan `social/` for `.md` files where `status: ready` and `scheduled_at <= now + grace`
+2. Scan `drafts/` and `mailboxes/*/drafts/` for `.md` files where `**Status**: scheduled` and `**Scheduled-At** <= now + grace`
+3. Sort by `scheduled_at` ascending (earliest first)
+4. Dispatch: `Social` → `social::publish::publish(path)`, `Email` → `draft::run(path, send=true)`
+5. Report results per-item
+
+**Grace window:** 30 seconds. Items scheduled up to 30s in the future are still considered due (handles cron drift / clock skew).
+
+### 13.2 Email Draft Scheduling
+
+Added `**Status**: scheduled` as a valid send status alongside `review` and `approved`.
+
+Email draft format:
+```markdown
+**Status**: scheduled
+**Scheduled-At**: 2026-02-25T09:00:00Z
+```
+
+Status flow: `draft` → `scheduled` → `sent`
+
+The `Scheduled-At` field uses RFC 3339 / ISO 8601 format with timezone (UTC recommended).
+
+### 13.3 Social Draft Scheduling
+
+Social drafts already have `scheduled_at: Option<DateTime<Utc>>` in YAML frontmatter (§12.3). The scheduler checks for `status: ready` combined with `scheduled_at` in the past.
+
+Status flow: `draft` → `ready` (with `scheduled_at` set) → `published`
+
+### 13.4 CLI Commands
+
+```
+corky schedule run              # Process all due scheduled items
+corky schedule run --dry-run    # Show what would be published without doing it
+corky schedule list             # List all pending scheduled items with times
+```
+
+`corky watch` includes scheduled publishing in its poll loop — no separate cron entry needed.
+Run `corky watch` and it handles both IMAP sync and scheduled publishing.
+`corky schedule run` remains available for one-shot use.
+
+**Standalone cron** (alternative to `corky watch`):
+```
+*/5 * * * * corky schedule run
+```
+
+### 13.5 Edge Case Table
+
+| # | Edge Case | Expected Behavior |
+|---|---|---|
+| S1 | No scheduled items | Exit 0, no output |
+| S2 | Social item due | Publish via `social::publish`, print summary |
+| S3 | Email item due | Send via `draft::run(send=true)`, print summary |
+| S4 | Item in future | Skipped |
+| S5 | `scheduled_at` missing on ready/scheduled item | Skipped (not a scheduled item) |
+| S6 | Multiple items due | Process all, sorted by time, per-item results |
+| S7 | Email with wrong status (not "scheduled") | Skipped |
+| S8 | Social with wrong status (not "ready") | Skipped |
+| S9 | Non-.md files in scan directories | Ignored |
+| S10 | Item within 30s grace window | Treated as due |
+| S11 | Publish fails (network) | Error logged, item stays scheduled, exit 1 |
+| S12 | `--dry-run` flag | Print what would happen, don't publish |
 

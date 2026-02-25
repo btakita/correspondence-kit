@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
 
-use corky::cli::{Cli, Commands, ContactCommands, DraftCommands, MailboxCommands, SlackCommands, SocialCommands, SyncCommands};
+use corky::cli::{Cli, Commands, ContactCommands, DraftCommands, MailboxCommands, ScheduleCommands, SlackCommands, SocialCommands, SyncCommands, TopicCommands};
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -161,6 +161,20 @@ fn main() -> Result<()> {
                 corky::social::run_rename_author(&old, &new)
             }
         },
+        Commands::Schedule(cmd) => match cmd {
+            ScheduleCommands::Run { dry_run } => corky::schedule::run(dry_run),
+            ScheduleCommands::List => corky::schedule::list(),
+        },
+        Commands::Topics(cmd) => match cmd {
+            TopicCommands::List { verbose } => corky::topics::run_list(verbose),
+            TopicCommands::Add { name, keywords, description } => {
+                corky::topics::run_add(&name, &keywords, description.as_deref())
+            }
+            TopicCommands::Info { name } => corky::topics::run_info(&name),
+            TopicCommands::Suggest { limit, mailbox } => {
+                corky::topics::run_suggest(limit, mailbox.as_deref())
+            }
+        },
         Commands::Slack(cmd) => match cmd {
             SlackCommands::Import { path, label, account } => {
                 let out_dir = corky::resolve::conversations_dir();
@@ -194,6 +208,7 @@ fn run_draft_command(cmd: DraftCommands) -> anyhow::Result<()> {
             corky::mailbox::validate_draft::run_scoped(&args)
         }
         DraftCommands::Push { file, send } => corky::draft::run(&file, send),
+        DraftCommands::Migrate { dry_run } => corky::draft::migrate::run(dry_run),
     }
 }
 

@@ -109,6 +109,13 @@ fn sync_mailboxes() {
     }
 }
 
+/// Run pending scheduled items (best-effort, never crashes the watch loop).
+fn schedule_tick() {
+    if let Err(e) = crate::schedule::run(false) {
+        eprintln!("schedule: {}", e);
+    }
+}
+
 /// One sync + mailbox sync cycle. Returns count of labels with new messages.
 fn poll_once(notify_enabled: bool) -> usize {
     let accounts = match load_accounts(None) {
@@ -204,6 +211,9 @@ pub async fn run(interval_override: Option<u64>) -> Result<()> {
         if shutdown.load(Ordering::Relaxed) {
             break;
         }
+
+        // Scheduled publishing
+        tokio::task::spawn_blocking(schedule_tick).await?;
 
         tokio::time::sleep(tokio::time::Duration::from_secs(interval)).await;
     }
