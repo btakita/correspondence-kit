@@ -23,6 +23,22 @@ pub struct CorkyConfig {
     pub mailboxes: HashMap<String, MailboxConfig>,
     #[serde(default)]
     pub watch: Option<WatchConfig>,
+    #[serde(default)]
+    pub social: Option<SocialConfig>,
+}
+
+/// Social platform OAuth client config (lives in .corky.toml under [social]).
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct SocialConfig {
+    #[serde(default)]
+    pub linkedin: Option<SocialClientConfig>,
+}
+
+/// OAuth client credentials for a single social platform.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SocialClientConfig {
+    pub client_id: String,
+    pub client_secret: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

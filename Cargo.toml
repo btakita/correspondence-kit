@@ -35,6 +35,9 @@ tempfile = "3"
 zip = "2"
 filetime = "0.2.27"
 ureq = { version = "2", features = ["json"] }
+tiny_http = "0.12"
+open = "5"
+serde_yaml = "0.9"
 instruction-files = { path = "../instruction-files", version = "0.1" }
 
 [features]

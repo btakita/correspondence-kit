@@ -59,6 +59,20 @@ pub fn run_cmd_checked(args: &[&str]) -> anyhow::Result<String> {
     Ok(stdout)
 }
 
+/// Truncate a string for preview display, adding "..." if truncated.
+pub fn truncate_preview(s: &str, max: usize) -> String {
+    let first_line = s.lines().next().unwrap_or("").trim();
+    if first_line.len() <= max {
+        first_line.to_string()
+    } else {
+        let mut end = max.saturating_sub(3);
+        while !first_line.is_char_boundary(end) && end > 0 {
+            end -= 1;
+        }
+        format!("{}...", &first_line[..end])
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -169,6 +169,10 @@ pub enum Commands {
     #[command(subcommand)]
     Slack(SlackCommands),
 
+    /// Social media posting commands
+    #[command(subcommand)]
+    Social(SocialCommands),
+
     /// Check for updates and upgrade to the latest version.
     Upgrade,
 }
@@ -376,6 +380,65 @@ pub enum MailboxCommands {
         /// Regenerate files without pulling/pushing
         #[arg(long)]
         no_sync: bool,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum SocialCommands {
+    /// Authenticate with a social platform (OAuth)
+    Auth {
+        /// Platform: linkedin, bluesky, mastodon, twitter
+        platform: String,
+
+        /// Profile name in profiles.toml to update with URN
+        #[arg(long)]
+        profile: Option<String>,
+    },
+
+    /// Create a new social media draft
+    Draft {
+        /// Platform: linkedin, bluesky, mastodon, twitter
+        platform: String,
+
+        /// Post body text
+        body: Option<String>,
+
+        /// Author profile name
+        #[arg(long)]
+        author: Option<String>,
+
+        /// Post visibility (public, connections)
+        #[arg(long, default_value = "public")]
+        visibility: String,
+
+        /// Comma-separated tags
+        #[arg(long, value_delimiter = ',')]
+        tags: Vec<String>,
+    },
+
+    /// Publish a ready social draft
+    Publish {
+        /// Path to the draft file
+        file: PathBuf,
+    },
+
+    /// Validate profiles.toml
+    Check,
+
+    /// List social drafts
+    List {
+        /// Filter by status: draft, ready, published
+        #[arg(long)]
+        status: Option<String>,
+    },
+
+    /// Rename an author across drafts and profiles
+    RenameAuthor {
+        /// Old author name
+        old: String,
+
+        /// New author name
+        new: String,
     },
 }
 

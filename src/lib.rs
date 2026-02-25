@@ -13,4 +13,5 @@ pub mod util;
 pub mod watch;
 pub mod help;
 pub mod audit_docs;
+pub mod social;
 pub mod upgrade;

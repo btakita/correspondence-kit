@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
 
-use corky::cli::{Cli, Commands, ContactCommands, DraftCommands, MailboxCommands, SlackCommands, SyncCommands};
+use corky::cli::{Cli, Commands, ContactCommands, DraftCommands, MailboxCommands, SlackCommands, SocialCommands, SyncCommands};
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -136,6 +136,30 @@ fn main() -> Result<()> {
                 corky::mailbox::find_unanswered::run(scope, &from)
             }
             MailboxCommands::Draft(cmd) => run_draft_command(cmd),
+        },
+        Commands::Social(cmd) => match cmd {
+            SocialCommands::Auth { platform, profile } => {
+                corky::social::run_auth(&platform, profile.as_deref())
+            }
+            SocialCommands::Draft {
+                platform,
+                body,
+                author,
+                visibility,
+                tags,
+            } => corky::social::run_draft(
+                &platform,
+                body.as_deref(),
+                author.as_deref(),
+                &visibility,
+                &tags,
+            ),
+            SocialCommands::Publish { file } => corky::social::run_publish(&file),
+            SocialCommands::Check => corky::social::run_check(),
+            SocialCommands::List { status } => corky::social::run_list(status.as_deref()),
+            SocialCommands::RenameAuthor { old, new } => {
+                corky::social::run_rename_author(&old, &new)
+            }
         },
         Commands::Slack(cmd) => match cmd {
             SlackCommands::Import { path, label, account } => {

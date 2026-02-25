@@ -88,6 +88,14 @@ pub fn credentials_json() -> PathBuf {
     config_dir().join("credentials.json")
 }
 
+pub fn social_dir() -> PathBuf {
+    data_dir().join("social")
+}
+
+pub fn profiles_toml() -> PathBuf {
+    data_dir().join("profiles.toml")
+}
+
 /// Get the user's home directory.
 pub fn home_dir() -> PathBuf {
     std::env::var_os("HOME")
