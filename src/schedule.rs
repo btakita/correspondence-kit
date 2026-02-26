@@ -666,6 +666,62 @@ mod tests {
         assert!(item.is_none());
     }
 
+    // S11: scan_scheduled returns both social and email kinds from a single data dir
+    #[test]
+    fn s11_scan_both_kinds() {
+        let tmp = TempDir::new().unwrap();
+        let social = tmp.path().join("social");
+        std::fs::create_dir_all(&social).unwrap();
+        let drafts = tmp.path().join("drafts");
+        std::fs::create_dir_all(&drafts).unwrap();
+
+        let past = Utc::now() - Duration::minutes(5);
+        std::fs::write(social.join("post.md"), make_social_draft(Some(past), "ready")).unwrap();
+        std::fs::write(drafts.join("email.md"), make_email_draft(Some(past), "scheduled")).unwrap();
+
+        let now = Utc::now();
+        let deadline = now + Duration::seconds(GRACE_SECONDS);
+        let mut items = Vec::new();
+        scan_social_dir(&social, deadline, &mut items).unwrap();
+        scan_email_dir(&drafts, deadline, &mut items).unwrap();
+        items.sort_by_key(|i| i.scheduled_at);
+
+        assert_eq!(items.len(), 2);
+        let kinds: Vec<_> = items.iter().map(|i| i.kind).collect();
+        assert!(kinds.contains(&ScheduledKind::Social));
+        assert!(kinds.contains(&ScheduledKind::Email));
+    }
+
+    // S12: ProcessResult structural test
+    #[test]
+    fn s12_process_result_fields() {
+        let result = ProcessResult {
+            path: PathBuf::from("social/test.md"),
+            kind: ScheduledKind::Social,
+            success: true,
+            message: "Published linkedin".to_string(),
+        };
+        assert!(result.success);
+        assert_eq!(result.kind, ScheduledKind::Social);
+        assert!(result.message.contains("Published"));
+
+        let failed = ProcessResult {
+            path: PathBuf::from("drafts/email.md"),
+            kind: ScheduledKind::Email,
+            success: false,
+            message: "Failed: SMTP error".to_string(),
+        };
+        assert!(!failed.success);
+        assert_eq!(failed.kind, ScheduledKind::Email);
+    }
+
+    // S13: ScheduledKind Display trait
+    #[test]
+    fn s13_kind_display() {
+        assert_eq!(format!("{}", ScheduledKind::Social), "social");
+        assert_eq!(format!("{}", ScheduledKind::Email), "email");
+    }
+
     // YAML frontmatter email draft — scheduled but in future, not due
     #[test]
     fn yaml_email_scheduled_future() {

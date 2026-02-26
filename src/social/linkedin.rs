@@ -9,6 +9,9 @@ const MAX_BODY_LENGTH: usize = 3000;
 /// Maximum images in a multi-image carousel.
 const MAX_IMAGES: usize = 20;
 
+/// Default LinkedIn API base URL.
+const API_BASE: &str = "https://api.linkedin.com";
+
 /// LinkedIn visibility values.
 pub fn map_visibility(visibility: &str) -> Result<&'static str> {
     match visibility.to_lowercase().as_str() {
@@ -23,7 +26,13 @@ pub fn map_visibility(visibility: &str) -> Result<&'static str> {
 
 /// Get the authenticated user's URN via /v2/userinfo.
 pub fn get_user_urn(access_token: &str) -> Result<String> {
-    let resp = ureq::get("https://api.linkedin.com/v2/userinfo")
+    get_user_urn_at(API_BASE, access_token)
+}
+
+/// Get the authenticated user's URN, with configurable API base URL (for testing).
+pub fn get_user_urn_at(api_base: &str, access_token: &str) -> Result<String> {
+    let url = format!("{}/v2/userinfo", api_base);
+    let resp = ureq::get(&url)
         .set("Authorization", &format!("Bearer {}", access_token))
         .call()
         .map_err(|e| anyhow::anyhow!("LinkedIn userinfo request failed: {}", e))?;
@@ -39,6 +48,16 @@ pub fn get_user_urn(access_token: &str) -> Result<String> {
 /// Initialize an image upload and upload the binary data.
 /// Returns the image URN for use in post creation.
 pub fn upload_image(access_token: &str, author_urn: &str, image_bytes: &[u8]) -> Result<String> {
+    upload_image_at(API_BASE, access_token, author_urn, image_bytes)
+}
+
+/// Upload an image with configurable API base URL (for testing).
+pub fn upload_image_at(
+    api_base: &str,
+    access_token: &str,
+    author_urn: &str,
+    image_bytes: &[u8],
+) -> Result<String> {
     // Step 1: Initialize upload
     let init_payload = json!({
         "initializeUploadRequest": {
@@ -46,7 +65,8 @@ pub fn upload_image(access_token: &str, author_urn: &str, image_bytes: &[u8]) ->
         }
     });
 
-    let init_resp = ureq::post("https://api.linkedin.com/rest/images?action=initializeUpload")
+    let init_url = format!("{}/rest/images?action=initializeUpload", api_base);
+    let init_resp = ureq::post(&init_url)
         .set("Authorization", &format!("Bearer {}", access_token))
         .set("LinkedIn-Version", "202601")
         .set("X-Restli-Protocol-Version", "2.0.0")
@@ -94,6 +114,18 @@ pub fn upload_image(access_token: &str, author_urn: &str, image_bytes: &[u8]) ->
 /// - 1 image: single image post (`content.media`)
 /// - 2+ images: multi-image carousel (`content.multiImage`)
 pub fn create_post(
+    access_token: &str,
+    author_urn: &str,
+    body: &str,
+    visibility: &str,
+    image_urns: &[String],
+) -> Result<(String, String)> {
+    create_post_at(API_BASE, access_token, author_urn, body, visibility, image_urns)
+}
+
+/// Create a post with configurable API base URL (for testing).
+pub fn create_post_at(
+    api_base: &str,
     access_token: &str,
     author_urn: &str,
     body: &str,
@@ -157,7 +189,8 @@ pub fn create_post(
         }
     }
 
-    let resp = ureq::post("https://api.linkedin.com/rest/posts")
+    let url = format!("{}/rest/posts", api_base);
+    let resp = ureq::post(&url)
         .set("Authorization", &format!("Bearer {}", access_token))
         .set("LinkedIn-Version", "202601")
         .set("X-Restli-Protocol-Version", "2.0.0")
