@@ -84,7 +84,9 @@ pub fn scan_scheduled(now: DateTime<Utc>) -> Result<Vec<ScheduledItem>> {
     Ok(items)
 }
 
-/// Scan a social/ directory for ready drafts with scheduled_at <= deadline.
+/// Scan a social/ directory for drafts with scheduled_at <= deadline.
+/// Accepts `draft` or `ready` status — setting `scheduled_at` implies readiness.
+/// Skips `published` items (already posted).
 fn scan_social_dir(
     dir: &Path,
     deadline: DateTime<Utc>,
@@ -95,16 +97,18 @@ fn scan_social_dir(
         if path.extension().map(|e| e == "md").unwrap_or(false) {
             if let Ok(content) = std::fs::read_to_string(&path) {
                 if let Ok(draft) = SocialDraft::parse(&content) {
-                    if draft.meta.status == crate::social::draft::DraftStatus::Ready {
-                        if let Some(scheduled_at) = draft.meta.scheduled_at {
-                            if scheduled_at <= deadline {
-                                items.push(ScheduledItem {
-                                    path,
-                                    kind: ScheduledKind::Social,
-                                    scheduled_at,
-                                    label: format!("{}", draft.meta.platform),
-                                });
-                            }
+                    // Skip already-published items (prevents double-publish)
+                    if draft.meta.status == crate::social::draft::DraftStatus::Published {
+                        continue;
+                    }
+                    if let Some(scheduled_at) = draft.meta.scheduled_at {
+                        if scheduled_at <= deadline {
+                            items.push(ScheduledItem {
+                                path,
+                                kind: ScheduledKind::Social,
+                                scheduled_at,
+                                label: format!("{}", draft.meta.platform),
+                            });
                         }
                     }
                 }
@@ -242,7 +246,7 @@ pub fn run(dry_run: bool) -> Result<()> {
 
         let result = match item.kind {
             ScheduledKind::Social => {
-                match crate::social::publish::publish(&item.path) {
+                match crate::social::publish::publish(&item.path, false) {
                     Ok(()) => ProcessResult {
                         path: item.path.clone(),
                         kind: item.kind,
@@ -531,16 +535,34 @@ mod tests {
         assert!(items.is_empty());
     }
 
-    // S8: Social draft with wrong status — skipped
+    // S8: Social draft with draft status + scheduled_at — picked up (scheduling implies readiness)
     #[test]
-    fn s8_social_wrong_status() {
+    fn s8_social_draft_with_schedule() {
         let tmp = TempDir::new().unwrap();
         let social = tmp.path().join("social");
         std::fs::create_dir_all(&social).unwrap();
 
         let past = Utc::now() - Duration::minutes(5);
         let content = make_social_draft(Some(past), "draft");
-        std::fs::write(social.join("not-ready.md"), &content).unwrap();
+        std::fs::write(social.join("scheduled-draft.md"), &content).unwrap();
+
+        let now = Utc::now();
+        let deadline = now + Duration::seconds(GRACE_SECONDS);
+        let mut items = Vec::new();
+        scan_social_dir(&social, deadline, &mut items).unwrap();
+        assert_eq!(items.len(), 1);
+    }
+
+    // S8b: Social draft with published status — skipped (prevents double-publish)
+    #[test]
+    fn s8b_social_published_skipped() {
+        let tmp = TempDir::new().unwrap();
+        let social = tmp.path().join("social");
+        std::fs::create_dir_all(&social).unwrap();
+
+        let past = Utc::now() - Duration::minutes(5);
+        let content = make_social_draft(Some(past), "published");
+        std::fs::write(social.join("already-published.md"), &content).unwrap();
 
         let now = Utc::now();
         let deadline = now + Duration::seconds(GRACE_SECONDS);

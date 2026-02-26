@@ -10,25 +10,30 @@ use super::platform::Platform;
 use super::profiles::ProfilesFile;
 use super::token_store::TokenStore;
 
-/// Publish a social draft file.
-pub fn publish(path: &Path) -> Result<()> {
+/// Publish a social draft file. When `dry_run` is true, validates everything
+/// (auth, images) but prints the payload instead of creating the post.
+pub fn publish(path: &Path, dry_run: bool) -> Result<()> {
     let content = std::fs::read_to_string(path)?;
-    let mut draft = SocialDraft::parse(&content)?;
+    let draft = SocialDraft::parse(&content)?;
 
     // PB1: Check status
-    if draft.meta.status != DraftStatus::Ready {
-        match draft.meta.status {
-            DraftStatus::Draft => bail!(
-                "Draft is not ready for publishing (status: draft).\n\
-                 Set status to 'ready' in the frontmatter before publishing."
-            ),
-            DraftStatus::Published => bail!(
-                "Draft has already been published.\n\
-                 Published at: {}",
-                draft.meta.published_at.map(|t| t.to_string()).unwrap_or_default()
-            ),
-            _ => bail!("Draft status '{}' is not publishable. Set to 'ready' first.", draft.meta.status),
-        }
+    // - Published → always reject (prevents double-publish)
+    // - Draft + scheduled_at set → allowed (scheduling implies readiness)
+    // - Draft + no scheduled_at + not dry-run → reject (manual publish requires ready)
+    // - Ready → always allowed
+    // - dry-run → always allowed (for testing)
+    if draft.meta.status == DraftStatus::Published {
+        bail!(
+            "Draft has already been published.\n\
+             Published at: {}",
+            draft.meta.published_at.map(|t| t.to_string()).unwrap_or_default()
+        );
+    }
+    if !dry_run && draft.meta.status != DraftStatus::Ready && draft.meta.scheduled_at.is_none() {
+        bail!(
+            "Draft is not ready for publishing (status: draft).\n\
+             Set status to 'ready' or add scheduled_at to the frontmatter."
+        );
     }
 
     // Resolve author in profiles.toml
@@ -62,8 +67,26 @@ pub fn publish(path: &Path) -> Result<()> {
         }
     })?;
 
-    // Upload images if present
+    // Upload images if present (even in dry-run, to verify they work)
     let image_urns = upload_images(path, &draft, &token.access_token, &urn, platform)?;
+
+    if dry_run {
+        println!("[dry-run] Validation passed. Would publish to {}.", platform);
+        println!("[dry-run] Author: {} ({})", author, urn);
+        println!("[dry-run] Visibility: {}", draft.meta.visibility);
+        if !image_urns.is_empty() {
+            println!("[dry-run] Images uploaded: {}", image_urns.len());
+            for (i, urn) in image_urns.iter().enumerate() {
+                println!("[dry-run]   {}: {}", i + 1, urn);
+            }
+        }
+        println!("[dry-run] Body ({} chars):", draft.body.len());
+        println!("---");
+        println!("{}", draft.body.trim());
+        println!("---");
+        println!("[dry-run] No post created. Set status to 'ready' and run without --dry-run to publish.");
+        return Ok(());
+    }
 
     // Call platform API
     let (post_id, post_url) = match platform {
@@ -80,6 +103,7 @@ pub fn publish(path: &Path) -> Result<()> {
     };
 
     // Update draft frontmatter
+    let mut draft = draft;
     draft.meta.status = DraftStatus::Published;
     draft.meta.post_id = Some(post_id.clone());
     draft.meta.post_url = Some(post_url.clone());

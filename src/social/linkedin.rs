@@ -48,7 +48,7 @@ pub fn upload_image(access_token: &str, author_urn: &str, image_bytes: &[u8]) ->
 
     let init_resp = ureq::post("https://api.linkedin.com/rest/images?action=initializeUpload")
         .set("Authorization", &format!("Bearer {}", access_token))
-        .set("LinkedIn-Version", "202401")
+        .set("LinkedIn-Version", "202601")
         .set("X-Restli-Protocol-Version", "2.0.0")
         .send_json(&init_payload);
 
@@ -159,7 +159,7 @@ pub fn create_post(
 
     let resp = ureq::post("https://api.linkedin.com/rest/posts")
         .set("Authorization", &format!("Bearer {}", access_token))
-        .set("LinkedIn-Version", "202401")
+        .set("LinkedIn-Version", "202601")
         .set("X-Restli-Protocol-Version", "2.0.0")
         .send_json(&payload);
 

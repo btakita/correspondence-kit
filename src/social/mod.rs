@@ -89,8 +89,8 @@ fn generate_draft_slug(platform: Platform) -> String {
 }
 
 /// Run the `social publish` command.
-pub fn run_publish(file: &Path) -> Result<()> {
-    publish::publish(file)
+pub fn run_publish(file: &Path, dry_run: bool) -> Result<()> {
+    publish::publish(file, dry_run)
 }
 
 /// Run the `social check` command: validate profiles.toml.

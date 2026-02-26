@@ -92,9 +92,9 @@ pub fn build_auth_url(platform: Platform) -> Result<(String, String)> {
                  &redirect_uri={}\
                  &state={}\
                  &scope={}",
-                creds.client_id,
-                urlencod(REDIRECT_URI),
-                state,
+                urlencode(&creds.client_id),
+                urlencode(REDIRECT_URI),
+                urlencode(&state),
                 scopes,
             );
             Ok((url, state))
@@ -103,9 +103,20 @@ pub fn build_auth_url(platform: Platform) -> Result<(String, String)> {
     }
 }
 
-/// Simple URL encoding for redirect URI.
-fn urlencod(s: &str) -> String {
-    s.replace(':', "%3A").replace('/', "%2F")
+/// Percent-encode a string for use in application/x-www-form-urlencoded bodies.
+fn urlencode(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() * 2);
+    for b in s.bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(b as char);
+            }
+            _ => {
+                out.push_str(&format!("%{:02X}", b));
+            }
+        }
+    }
+    out
 }
 
 /// Parse callback query string, returning (code, state).
@@ -147,15 +158,24 @@ fn exchange_code(platform: Platform, code: &str) -> Result<StoredToken> {
 
     match platform {
         Platform::LinkedIn => {
-            let resp = ureq::post("https://www.linkedin.com/oauth/v2/accessToken")
+            let body_str = format!(
+                "grant_type=authorization_code&code={}&redirect_uri={}&client_id={}&client_secret={}",
+                urlencode(code),
+                urlencode(REDIRECT_URI),
+                urlencode(&creds.client_id),
+                urlencode(&creds.client_secret),
+            );
+            let resp = match ureq::post("https://www.linkedin.com/oauth/v2/accessToken")
                 .set("Content-Type", "application/x-www-form-urlencoded")
-                .send_string(&format!(
-                    "grant_type=authorization_code&code={}&redirect_uri={}&client_id={}&client_secret={}",
-                    code,
-                    urlencod(REDIRECT_URI),
-                    creds.client_id,
-                    creds.client_secret,
-                ))?;
+                .send_string(&body_str)
+            {
+                Ok(r) => r,
+                Err(ureq::Error::Status(status, resp)) => {
+                    let err_body = resp.into_string().unwrap_or_default();
+                    bail!("Token exchange failed (HTTP {}): {}", status, err_body);
+                }
+                Err(e) => return Err(e.into()),
+            };
 
             let body: serde_json::Value = resp.into_json()?;
             let access_token = body["access_token"]

@@ -154,7 +154,7 @@ fn main() -> Result<()> {
                 &visibility,
                 &tags,
             ),
-            SocialCommands::Publish { file } => corky::social::run_publish(&file),
+            SocialCommands::Publish { file, dry_run } => corky::social::run_publish(&file, dry_run),
             SocialCommands::Check => corky::social::run_check(),
             SocialCommands::List { status } => corky::social::run_list(status.as_deref()),
             SocialCommands::RenameAuthor { old, new } => {

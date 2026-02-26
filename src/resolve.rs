@@ -10,6 +10,12 @@ use std::path::PathBuf;
 
 /// Return the data directory path.
 pub fn data_dir() -> PathBuf {
+    // If CWD itself contains .corky.toml, treat CWD as the data dir
+    // (handles running from inside the mail/ directory)
+    let cwd = PathBuf::from(".");
+    if cwd.join(".corky.toml").exists() || cwd.join("corky.toml").exists() {
+        return cwd;
+    }
     let local = PathBuf::from("mail");
     if local.is_dir() {
         return local;

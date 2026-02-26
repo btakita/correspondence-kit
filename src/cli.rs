@@ -434,6 +434,9 @@ pub enum SocialCommands {
     Publish {
         /// Path to the draft file
         file: PathBuf,
+        /// Validate and show payload without actually publishing
+        #[arg(long)]
+        dry_run: bool,
     },
 
     /// Validate profiles.toml
