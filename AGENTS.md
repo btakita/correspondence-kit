@@ -134,6 +134,19 @@ Follow a research → plan → implement cycle. Never write code until the plan 
   cleanup pass. Every commit that changes behavior should include the corresponding
   spec change.
 
+## Release Process
+
+1. Bump version in `Cargo.toml` + `pyproject.toml` (keep in sync)
+2. `make check` (clippy + test)
+3. Branch → PR → squash merge to main
+4. Tag: `git tag v<version> && git push origin v<version>`
+5. `cargo publish` (crates.io)
+6. `maturin publish` (PyPI)
+7. `gh release create v<version> --generate-notes` with prebuilt binary (GitHub Release)
+8. Install binary: `cargo install --path .`
+
+Publish order when instruction-files changes: instruction-files → agent-doc → corky.
+
 ## Conventions
 
 - Use `make check` (clippy + test), `make release` (build + .bin symlink) for development
