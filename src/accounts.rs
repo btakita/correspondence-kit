@@ -167,23 +167,11 @@ fn apply_preset(account: &mut Account) {
 
 /// Resolve password: inline value if set, else run password_cmd.
 pub fn resolve_password(account: &Account) -> Result<String> {
-    if !account.password.is_empty() {
-        return Ok(account.password.clone());
-    }
-    if !account.password_cmd.is_empty() {
-        let output = std::process::Command::new("sh")
-            .arg("-c")
-            .arg(&account.password_cmd)
-            .output()?;
-        if !output.status.success() {
-            bail!(
-                "password_cmd failed: {}",
-                String::from_utf8_lossy(&output.stderr).trim()
-            );
-        }
-        return Ok(String::from_utf8_lossy(&output.stdout).trim().to_string());
-    }
-    bail!("Account {:?} has no password or password_cmd", account.user)
+    crate::util::resolve_secret(
+        &account.password,
+        &account.password_cmd,
+        &format!("Account {:?} has no password or password_cmd", account.user),
+    )
 }
 
 /// Parse accounts from .corky.toml → {name: Account} mapping.

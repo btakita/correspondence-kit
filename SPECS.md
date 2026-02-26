@@ -202,12 +202,18 @@ auto_send = false
 [watch]
 poll_interval = 300         # Seconds between polls
 notify = false              # Desktop notifications
+
+[social.linkedin]
+client_id = ""              # Inline client ID
+client_id_cmd = ""          # Shell command (e.g. "pass corky/linkedin/client_id")
+client_secret = ""          # Inline client secret
+client_secret_cmd = ""      # Shell command (e.g. "pass corky/linkedin/client_secret")
 ```
 
-Password resolution order:
-1. `password` field (inline)
-2. `password_cmd` (run shell command, strip trailing whitespace)
-3. Error if neither set
+Secret resolution order (shared `util::resolve_secret`):
+1. Inline field value
+2. `_cmd` field (shell command, capture stdout, strip trailing whitespace)
+3. Error if both empty (social credentials fall back to env vars before error — see §12.5)
 
 Label scoping syntax: `account:label` (e.g. `"proton-dev:INBOX"`) binds a label to a specific account.
 
@@ -899,11 +905,16 @@ Preset values are defaults — any field explicitly set on the account wins.
 
 ## 11. Account Resolution
 
-### 11.1 Password
+### 11.1 Secret Resolution
 
-1. `password` field (inline string)
-2. `password_cmd` (shell command, capture stdout, strip trailing whitespace)
-3. Raise error if neither set
+Shared pattern (`util::resolve_secret`) used by both account passwords and social OAuth credentials:
+
+1. Inline value (non-empty string)
+2. `_cmd` field (shell command via `sh -c`, capture stdout, strip trailing whitespace)
+3. Error with context message if both are empty
+
+**Account passwords:** `password` > `password_cmd` > error
+**Social credentials:** `client_id` > `client_id_cmd` > env var fallback (see §12.5)
 
 ### 11.2 Sending Account
 
@@ -1004,7 +1015,10 @@ Authorization code flow (LinkedIn):
 7. Fetch user URN via `/v2/userinfo`
 8. Store token in tokens.json
 
-Client credentials resolved from: `[social.linkedin]` in `.corky.toml` > `CORKY_LINKEDIN_CLIENT_ID` / `CORKY_LINKEDIN_CLIENT_SECRET` env vars.
+Client credentials resolution order per field:
+1. Inline value in `.corky.toml` (e.g. `client_id = "..."`)
+2. Shell command via `_cmd` suffix (e.g. `client_id_cmd = "pass corky/linkedin/client_id"`)
+3. Environment variable (`CORKY_LINKEDIN_CLIENT_ID` / `CORKY_LINKEDIN_CLIENT_SECRET`)
 
 ### 12.6 Publish Flow
 

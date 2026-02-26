@@ -38,10 +38,18 @@ pub struct SocialConfig {
 }
 
 /// OAuth client credentials for a single social platform.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+///
+/// Resolution order per field: inline value > `_cmd` (shell command) > env var.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SocialClientConfig {
+    #[serde(default)]
     pub client_id: String,
+    #[serde(default)]
+    pub client_id_cmd: String,
+    #[serde(default)]
     pub client_secret: String,
+    #[serde(default)]
+    pub client_secret_cmd: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

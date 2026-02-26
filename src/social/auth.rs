@@ -21,17 +21,31 @@ struct ClientCredentials {
 }
 
 /// Resolve client credentials for a platform.
+///
+/// Resolution order per field: inline value > `_cmd` (shell command) > env var.
 fn resolve_credentials(platform: Platform) -> Result<ClientCredentials> {
     match platform {
         Platform::LinkedIn => {
-            // Try .corky.toml first
+            // Try .corky.toml first (inline or _cmd)
             if let Some(cfg) = corky_config::try_load_config(None) {
                 if let Some(social) = &cfg.social {
                     if let Some(li) = &social.linkedin {
-                        return Ok(ClientCredentials {
-                            client_id: li.client_id.clone(),
-                            client_secret: li.client_secret.clone(),
-                        });
+                        let id = crate::util::resolve_secret(
+                            &li.client_id,
+                            &li.client_id_cmd,
+                            "LinkedIn client_id",
+                        );
+                        let secret = crate::util::resolve_secret(
+                            &li.client_secret,
+                            &li.client_secret_cmd,
+                            "LinkedIn client_secret",
+                        );
+                        if let (Ok(client_id), Ok(client_secret)) = (id, secret) {
+                            return Ok(ClientCredentials {
+                                client_id,
+                                client_secret,
+                            });
+                        }
                     }
                 }
             }

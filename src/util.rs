@@ -59,6 +59,35 @@ pub fn run_cmd_checked(args: &[&str]) -> anyhow::Result<String> {
     Ok(stdout)
 }
 
+/// Resolve a secret value: inline string first, then shell command.
+///
+/// Returns `Ok(value)` if either source yields a non-empty string.
+/// Returns `Err` with `context` message if both are empty.
+pub fn resolve_secret(inline: &str, cmd: &str, context: &str) -> anyhow::Result<String> {
+    if !inline.is_empty() {
+        return Ok(inline.to_string());
+    }
+    if !cmd.is_empty() {
+        let output = Command::new("sh")
+            .arg("-c")
+            .arg(cmd)
+            .output()?;
+        if !output.status.success() {
+            anyhow::bail!(
+                "{} command failed: {}",
+                context,
+                String::from_utf8_lossy(&output.stderr).trim()
+            );
+        }
+        let value = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if value.is_empty() {
+            anyhow::bail!("{} command produced empty output", context);
+        }
+        return Ok(value);
+    }
+    anyhow::bail!("{}", context)
+}
+
 /// Truncate a string for preview display, adding "..." if truncated.
 pub fn truncate_preview(s: &str, max: usize) -> String {
     let first_line = s.lines().next().unwrap_or("").trim();
@@ -137,5 +166,50 @@ mod tests {
             thread_key_from_subject("Hello World"),
             "hello world"
         );
+    }
+
+    #[test]
+    fn test_resolve_secret_inline() {
+        let result = resolve_secret("my-secret", "", "unused context");
+        assert_eq!(result.unwrap(), "my-secret");
+    }
+
+    #[test]
+    fn test_resolve_secret_inline_wins_over_cmd() {
+        let result = resolve_secret("inline-val", "echo cmd-val", "unused");
+        assert_eq!(result.unwrap(), "inline-val");
+    }
+
+    #[test]
+    fn test_resolve_secret_cmd() {
+        let result = resolve_secret("", "echo hello-from-cmd", "unused");
+        assert_eq!(result.unwrap(), "hello-from-cmd");
+    }
+
+    #[test]
+    fn test_resolve_secret_cmd_strips_whitespace() {
+        let result = resolve_secret("", "printf '  padded  \n'", "unused");
+        assert_eq!(result.unwrap(), "padded");
+    }
+
+    #[test]
+    fn test_resolve_secret_both_empty() {
+        let result = resolve_secret("", "", "no secret configured");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("no secret configured"));
+    }
+
+    #[test]
+    fn test_resolve_secret_cmd_empty_output() {
+        let result = resolve_secret("", "echo -n ''", "empty cmd");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("empty output"));
+    }
+
+    #[test]
+    fn test_resolve_secret_cmd_failure() {
+        let result = resolve_secret("", "false", "bad cmd");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("bad cmd"));
     }
 }
