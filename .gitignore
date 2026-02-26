@@ -27,3 +27,4 @@ book/
 skills/
 skills-lock.json
 *.iml
+.agent-doc/
