@@ -4,6 +4,10 @@ Corky is alpha software. Expect breaking changes between minor versions.
 
 Use `BREAKING CHANGE:` prefix in version entries to flag incompatible changes.
 
+## 0.12.1
+
+- **Email attachments**: `--attach` flag on `corky draft new` and `attachments:` YAML frontmatter field. Sends as `multipart/mixed` with auto-detected content types via `mime_guess`. Files validated at send time.
+
 ## 0.11.1
 
 - **`_cmd` fields for social OAuth credentials**: `client_id_cmd` and `client_secret_cmd` in `[social.linkedin]` for credential managers (pass, op, etc.). Resolution order: inline value > `_cmd` shell command > env var.

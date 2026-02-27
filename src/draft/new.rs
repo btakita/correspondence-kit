@@ -9,6 +9,7 @@ use crate::resolve;
 use crate::util;
 
 /// Create a new draft file with the given metadata fields.
+#[allow(clippy::too_many_arguments)]
 pub fn run(
     subject: &str,
     to: &str,
@@ -17,6 +18,7 @@ pub fn run(
     from: Option<&str>,
     in_reply_to: Option<&str>,
     mailbox: Option<&str>,
+    attachments: &[String],
 ) -> Result<()> {
     let drafts_dir = match mailbox {
         Some(name) => resolve::mailbox_dir(name).join("drafts"),
@@ -34,7 +36,7 @@ pub fn run(
     let slug = util::slugify(subject);
     let path = unique_path(&drafts_dir, &date, &slug);
 
-    let content = render(subject, to, cc, account, from, in_reply_to, &author);
+    let content = render(subject, to, cc, account, from, in_reply_to, &author, attachments);
     std::fs::write(&path, content)?;
     println!("{}", path.display());
     Ok(())
@@ -57,6 +59,7 @@ fn unique_path(dir: &std::path::Path, date: &str, slug: &str) -> PathBuf {
 }
 
 /// Render the draft markdown content in YAML frontmatter format.
+#[allow(clippy::too_many_arguments)]
 fn render(
     subject: &str,
     to: &str,
@@ -65,6 +68,7 @@ fn render(
     from: Option<&str>,
     in_reply_to: Option<&str>,
     author: &str,
+    attachments: &[String],
 ) -> String {
     let mut fm_lines = Vec::new();
     fm_lines.push(format!("to: {}", to));
@@ -84,6 +88,12 @@ fn render(
     if let Some(in_reply_to) = in_reply_to {
         fm_lines.push(format!("in_reply_to: \"{}\"", in_reply_to));
     }
+    if !attachments.is_empty() {
+        fm_lines.push("attachments:".to_string());
+        for path in attachments {
+            fm_lines.push(format!("  - {}", path));
+        }
+    }
 
     let mut lines = Vec::new();
     lines.push("---".to_string());
@@ -101,7 +111,7 @@ mod tests {
 
     #[test]
     fn test_render_minimal() {
-        let out = render("Hello", "a@b.com", None, None, None, None, "");
+        let out = render("Hello", "a@b.com", None, None, None, None, "", &[]);
         assert!(out.starts_with("---\n"));
         assert!(out.contains("to: a@b.com\n"));
         assert!(out.contains("status: draft\n"));
@@ -124,6 +134,7 @@ mod tests {
             Some("me@x.com"),
             Some("<msg-1>"),
             "Alice",
+            &[],
         );
         assert!(out.contains("cc: c@d.com\n"));
         assert!(out.contains("author: Alice\n"));
@@ -143,6 +154,7 @@ mod tests {
             Some("me@x.com"),
             None,
             "Alice",
+            &[],
         );
         // Should be parseable by the YAML parser
         assert!(out.starts_with("---\n"));
@@ -154,6 +166,27 @@ mod tests {
         assert_eq!(meta.cc.as_deref(), Some("c@d.com"));
         assert_eq!(meta.status, "draft");
         assert_eq!(meta.author.as_deref(), Some("Alice"));
+    }
+
+    #[test]
+    fn test_render_with_attachments() {
+        let attachments = vec![
+            "/tmp/screenshot.png".to_string(),
+            "/tmp/doc.pdf".to_string(),
+        ];
+        let out = render("Test", "a@b.com", None, None, None, None, "", &attachments);
+        assert!(out.contains("attachments:\n"));
+        assert!(out.contains("  - /tmp/screenshot.png\n"));
+        assert!(out.contains("  - /tmp/doc.pdf\n"));
+
+        // Should be parseable
+        let after_first = &out[4..];
+        let end = after_first.find("\n---").unwrap();
+        let yaml_str = &after_first[..end];
+        let meta: crate::draft::EmailDraftMeta = serde_yaml::from_str(yaml_str).unwrap();
+        assert_eq!(meta.attachments.len(), 2);
+        assert_eq!(meta.attachments[0], "/tmp/screenshot.png");
+        assert_eq!(meta.attachments[1], "/tmp/doc.pdf");
     }
 
     #[test]

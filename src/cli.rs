@@ -308,6 +308,10 @@ pub enum DraftCommands {
         /// Create in a mailbox's drafts/ instead of root
         #[arg(long)]
         mailbox: Option<String>,
+
+        /// Attach a file (can be repeated)
+        #[arg(long = "attach")]
+        attachments: Vec<String>,
     },
     /// Validate draft markdown files
     Validate {

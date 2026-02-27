@@ -5,7 +5,8 @@ pub mod new;
 
 use anyhow::{bail, Result};
 use chrono::{DateTime, Utc};
-use lettre::message::Mailbox;
+use lettre::message::header::ContentType;
+use lettre::message::{Attachment, Mailbox, MultiPart, SinglePart};
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{Message, SmtpTransport, Transport};
 use once_cell::sync::Lazy;
@@ -46,6 +47,8 @@ pub struct EmailDraftMeta {
     pub in_reply_to: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scheduled_at: Option<DateTime<Utc>>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub attachments: Vec<String>,
 }
 
 /// Returns true if the content starts with YAML frontmatter.
@@ -184,6 +187,7 @@ fn compose_email(
     subject: &str,
     body: &str,
     from_addr: &str,
+    attachment_paths: &[String],
 ) -> Result<Message> {
     let from: Mailbox = from_addr.parse().map_err(|_| anyhow::anyhow!("Invalid from address: {}", from_addr))?;
     let to: Mailbox = meta["To"]
@@ -209,8 +213,38 @@ fn compose_email(
         }
     }
 
-    let email = builder.body(body.to_string())?;
-    Ok(email)
+    if attachment_paths.is_empty() {
+        let email = builder.body(body.to_string())?;
+        Ok(email)
+    } else {
+        let mut multipart = MultiPart::mixed().singlepart(SinglePart::plain(body.to_string()));
+
+        for path_str in attachment_paths {
+            let path = Path::new(path_str);
+            if !path.exists() {
+                bail!("Attachment not found: {}", path_str);
+            }
+            let file_bytes = std::fs::read(path)?;
+            let filename = path
+                .file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_else(|| "attachment".to_string());
+
+            let content_type = mime_guess::from_path(path)
+                .first()
+                .map(|mime| {
+                    ContentType::parse(mime.as_ref())
+                        .unwrap_or(ContentType::parse("application/octet-stream").unwrap())
+                })
+                .unwrap_or_else(|| ContentType::parse("application/octet-stream").unwrap());
+
+            let attachment = Attachment::new(filename).body(file_bytes, content_type);
+            multipart = multipart.singlepart(attachment);
+        }
+
+        let email = builder.multipart(multipart)?;
+        Ok(email)
+    }
 }
 
 /// Push draft to IMAP drafts folder.
@@ -371,6 +405,15 @@ pub fn run(file: &Path, send: bool) -> Result<()> {
         bail!("File not found: {}", file.display());
     }
 
+    let text = std::fs::read_to_string(file)?;
+    let attachments = if is_yaml_format(&text) {
+        parse_draft_yaml(&text)
+            .map(|m| m.attachments)
+            .unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+
     let (meta, subject, body) = parse_draft(file)?;
 
     // Validate Status for --send
@@ -400,6 +443,12 @@ pub fn run(file: &Path, send: bool) -> Result<()> {
     if let Some(reply_to) = meta.get("In-Reply-To") {
         println!("Reply:   {}", reply_to);
     }
+    if !attachments.is_empty() {
+        println!("Attach:  {} file(s)", attachments.len());
+        for a in &attachments {
+            println!("         {}", a);
+        }
+    }
     let body_preview = if body.len() > 80 {
         format!("{}...", &body[..80])
     } else {
@@ -408,7 +457,7 @@ pub fn run(file: &Path, send: bool) -> Result<()> {
     println!("Body:    {}", body_preview);
     println!();
 
-    let email = compose_email(&meta, &subject, &body, &acct.user)?;
+    let email = compose_email(&meta, &subject, &body, &acct.user, &attachments)?;
 
     if send {
         send_email(&email, &acct.smtp_host, acct.smtp_port, &acct.user, &password)?;

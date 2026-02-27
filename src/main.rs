@@ -217,6 +217,7 @@ fn run_draft_command(cmd: DraftCommands) -> anyhow::Result<()> {
             from,
             in_reply_to,
             mailbox,
+            attachments,
         } => corky::draft::new::run(
             &subject,
             &to,
@@ -225,6 +226,7 @@ fn run_draft_command(cmd: DraftCommands) -> anyhow::Result<()> {
             from.as_deref(),
             in_reply_to.as_deref(),
             mailbox.as_deref(),
+            &attachments,
         ),
         DraftCommands::Validate { args } => {
             corky::mailbox::validate_draft::run_scoped(&args)

@@ -133,6 +133,9 @@ account: personal
 from: brian@example.com
 in_reply_to: "<msg-id>"
 scheduled_at: null
+attachments:
+  - /tmp/screenshot.png
+  - ~/Documents/report.pdf
 ---
 
 # Subject Line
@@ -140,6 +143,7 @@ scheduled_at: null
 Body text here.
 ```
 
+Optional fields: `attachments` (list of file paths)
 Required fields: `# Subject` heading (in body), `to`, `---` delimiters
 Recommended fields: `status`, `author`
 Status values: `draft` → `review` → `approved` → `scheduled` → `sent`
@@ -432,6 +436,11 @@ Default: creates a draft via IMAP APPEND to the drafts folder.
 `--send`: sends via SMTP. Requires Status to be `review` or `approved`.
 After sending, updates Status field in the file to `sent`.
 
+**Attachments:** When `attachments` is present in YAML frontmatter, the email is sent as
+`multipart/mixed` with the text body and binary attachment parts. Content-type is auto-detected
+via `mime_guess` (falls back to `application/octet-stream`). File existence is validated at
+send time, not draft creation time.
+
 Account resolution for sending:
 1. `**Account**` field → match by name in `.corky.toml`
 2. `**From**` field → match by email address
@@ -618,7 +627,7 @@ Available on all commands. Resolves the named mailbox via app config and sets `C
 
 ```
 corky draft new SUBJECT --to EMAIL [--cc EMAIL] [--account NAME] [--from EMAIL]
-                [--in-reply-to MSG-ID] [--mailbox NAME]
+                [--in-reply-to MSG-ID] [--mailbox NAME] [--attach FILE ...]
 corky mailbox draft new SUBJECT --to EMAIL [...]
 ```
 
@@ -631,6 +640,7 @@ Output: creates `drafts/YYYY-MM-DD-{slug}.md` and prints the path.
 - `--account`: sending account name from `.corky.toml`
 - `--from`: sending email address
 - `--in-reply-to`: message ID for threading
+- `--attach`: file path to attach (repeatable)
 - Author resolved from `[owner] name` in `.corky.toml`
 - Slug collisions handled with `-2`, `-3` suffix (same as sync)
 
