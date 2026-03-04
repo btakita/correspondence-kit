@@ -1,7 +1,7 @@
 [package]
 name = "corky"
-version = "0.12.3"
-edition = "2021"
+version = "0.12.4"
+edition = "2024"
 description = "Sync email threads from IMAP to Markdown, draft replies, manage collaborators"
 license = "Apache-2.0"
 repository = "https://github.com/btakita/corky"
@@ -63,6 +63,11 @@ mockito = "1"
 
 [lints.rust]
 warnings = "deny"
+
+[lints.clippy]
+# Allowed during Rust 2024 migration: clippy now suggests `if let` chains
+# (a Rust 2024 feature) for nested if/if-let blocks. Fix incrementally.
+collapsible_if = "allow"
 
 [profile.release]
 opt-level = 3

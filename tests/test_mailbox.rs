@@ -141,19 +141,21 @@ notify = true
 fn test_mailbox_dir() {
     let tmp = TempDir::new().unwrap();
     let data = tmp.path().to_path_buf();
-    std::env::set_var("CORKY_DATA", data.to_string_lossy().as_ref());
+    // SAFETY: Test-only; no concurrent env access.
+    unsafe { std::env::set_var("CORKY_DATA", data.to_string_lossy().as_ref()) };
 
     let dir = resolve::mailbox_dir("AlexUser");
     // Should lowercase the name
     assert!(dir.to_string_lossy().ends_with("mailboxes/alexuser"));
 
-    std::env::remove_var("CORKY_DATA");
+    unsafe { std::env::remove_var("CORKY_DATA") };
 }
 
 #[test]
 fn test_corky_toml_resolution() {
     let tmp = TempDir::new().unwrap();
-    std::env::set_var("CORKY_DATA", tmp.path().to_string_lossy().as_ref());
+    // SAFETY: Test-only; no concurrent env access.
+    unsafe { std::env::set_var("CORKY_DATA", tmp.path().to_string_lossy().as_ref()) };
 
     // No file exists — should default to .corky.toml path
     let path = resolve::corky_toml();
@@ -169,7 +171,7 @@ fn test_corky_toml_resolution() {
         assert!(path.exists());
     }
 
-    std::env::remove_var("CORKY_DATA");
+    unsafe { std::env::remove_var("CORKY_DATA") };
 }
 
 #[test]

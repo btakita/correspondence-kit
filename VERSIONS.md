@@ -4,6 +4,10 @@ Corky is alpha software. Expect breaking changes between minor versions.
 
 Use `BREAKING CHANGE:` prefix in version entries to flag incompatible changes.
 
+## 0.12.4
+
+- **Rust 2024 edition migration**: `set_var`/`remove_var` wrapped in `unsafe {}`, removed explicit `ref mut` patterns (implicit borrow in 2024), added `collapsible_if = "allow"` clippy lint. instruction-files bumped to v0.1.4.
+
 ## 0.12.3
 
 - **Filter drift detection**: `corky filter check` compares local `.corky.toml` filters against live Gmail filters (read-only, 2 API calls). `corky watch` runs this hourly and warns on drift.

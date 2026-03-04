@@ -193,7 +193,8 @@ pub fn run(
 
     // 9. Optional first sync
     if sync {
-        std::env::set_var("CORKY_DATA", data_dir.to_string_lossy().as_ref());
+        // SAFETY: This runs during single-threaded init before any sync threads start.
+        unsafe { std::env::set_var("CORKY_DATA", data_dir.to_string_lossy().as_ref()) };
         println!();
         crate::sync::run(false, None)?;
     }

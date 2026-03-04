@@ -30,7 +30,8 @@ fn run_init_isolated(
 ) -> anyhow::Result<()> {
     let _lock = ENV_MUTEX.lock().unwrap();
     let old_home = std::env::var("HOME").ok();
-    std::env::set_var("HOME", tmp.path().to_string_lossy().as_ref());
+    // SAFETY: Tests run serially under ENV_MUTEX so no concurrent env access.
+    unsafe { std::env::set_var("HOME", tmp.path().to_string_lossy().as_ref()) };
     let result = corky::init::run(
         user, path, provider, password_cmd, labels, github_user, name,
         false, // sync
@@ -38,7 +39,7 @@ fn run_init_isolated(
     );
     // Restore HOME
     if let Some(h) = old_home {
-        std::env::set_var("HOME", h);
+        unsafe { std::env::set_var("HOME", h) };
     }
     result
 }
