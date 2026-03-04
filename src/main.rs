@@ -10,7 +10,8 @@ fn main() -> Result<()> {
     if let Some(ref mailbox_name) = cli.mailbox {
         let path = corky::app_config::resolve_mailbox(Some(mailbox_name))?;
         if let Some(p) = path {
-            std::env::set_var("CORKY_DATA", p.to_string_lossy().as_ref());
+            // SAFETY: This runs at the very start of main before any threads are spawned.
+            unsafe { std::env::set_var("CORKY_DATA", p.to_string_lossy().as_ref()) };
         } else {
             eprintln!("No mailboxes configured. Run 'corky init' first.");
             std::process::exit(1);

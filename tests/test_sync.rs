@@ -711,7 +711,8 @@ fn test_manifest_generation() {
     std::fs::create_dir_all(&conv_dir).unwrap();
 
     // Set CORKY_DATA so .corky.toml resolution works
-    std::env::set_var("CORKY_DATA", data_dir.to_string_lossy().as_ref());
+    // SAFETY: Test-only; no concurrent env access.
+    unsafe { std::env::set_var("CORKY_DATA", data_dir.to_string_lossy().as_ref()) };
 
     // Create a .corky.toml (contacts section is optional)
     std::fs::write(data_dir.join(".corky.toml"), "").unwrap();
@@ -750,7 +751,7 @@ fn test_manifest_generation() {
     assert!(content.contains("manifest-subject"));
     assert!(content.contains("Manifest Subject"));
 
-    std::env::remove_var("CORKY_DATA");
+    unsafe { std::env::remove_var("CORKY_DATA") };
 }
 
 // ---------------------------------------------------------------------------

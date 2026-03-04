@@ -483,7 +483,7 @@ fn sync_label(
         for out_dir in out_dirs {
             let file_path =
                 merge_message_to_file(out_dir, label_name, account_name, &message, &thread_key)?;
-            if let Some(ref mut touched_set) = touched {
+            if let Some(touched_set) = touched {
                 if let Some(ref fp) = file_path {
                     touched_set.insert(fp.clone());
                 }

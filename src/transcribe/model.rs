@@ -206,7 +206,8 @@ mod tests {
 
     #[test]
     fn shellexpand_tilde() {
-        std::env::set_var("HOME", "/home/test");
+        // SAFETY: Test-only; no concurrent env access.
+        unsafe { std::env::set_var("HOME", "/home/test") };
         assert_eq!(shellexpand("~/models"), "/home/test/models");
         assert_eq!(shellexpand("/abs/path"), "/abs/path");
     }

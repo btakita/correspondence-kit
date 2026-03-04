@@ -43,7 +43,8 @@ fn test_home_dir_returns_path() {
 fn test_derived_paths_are_consistent() {
     let tmp = TempDir::new().unwrap();
     let data = tmp.path().to_path_buf();
-    std::env::set_var("CORKY_DATA", data.to_string_lossy().as_ref());
+    // SAFETY: Test-only; no concurrent env access.
+    unsafe { std::env::set_var("CORKY_DATA", data.to_string_lossy().as_ref()) };
 
     let conversations = resolve::conversations_dir();
     let drafts = resolve::drafts_dir();
@@ -53,39 +54,42 @@ fn test_derived_paths_are_consistent() {
     assert!(drafts.to_string_lossy().ends_with("drafts"));
     assert!(contacts.to_string_lossy().ends_with("contacts"));
 
-    std::env::remove_var("CORKY_DATA");
+    unsafe { std::env::remove_var("CORKY_DATA") };
 }
 
 #[test]
 fn test_mailbox_dir_lowercases() {
     let tmp = TempDir::new().unwrap();
     let data = tmp.path().to_path_buf();
-    std::env::set_var("CORKY_DATA", data.to_string_lossy().as_ref());
+    // SAFETY: Test-only; no concurrent env access.
+    unsafe { std::env::set_var("CORKY_DATA", data.to_string_lossy().as_ref()) };
 
     let dir = resolve::mailbox_dir("AlexUser");
     assert!(dir.to_string_lossy().contains("alexuser"));
     assert!(dir.to_string_lossy().ends_with("mailboxes/alexuser"));
 
-    std::env::remove_var("CORKY_DATA");
+    unsafe { std::env::remove_var("CORKY_DATA") };
 }
 
 #[test]
 fn test_corky_toml_default_path() {
     let tmp = TempDir::new().unwrap();
     let data = tmp.path().to_path_buf();
-    std::env::set_var("CORKY_DATA", data.to_string_lossy().as_ref());
+    // SAFETY: Test-only; no concurrent env access.
+    unsafe { std::env::set_var("CORKY_DATA", data.to_string_lossy().as_ref()) };
 
     let path = resolve::corky_toml();
     assert!(path.to_string_lossy().ends_with(".corky.toml"));
 
-    std::env::remove_var("CORKY_DATA");
+    unsafe { std::env::remove_var("CORKY_DATA") };
 }
 
 #[test]
 fn test_corky_toml_finds_dotfile() {
     let tmp = TempDir::new().unwrap();
     let data = tmp.path().to_path_buf();
-    std::env::set_var("CORKY_DATA", data.to_string_lossy().as_ref());
+    // SAFETY: Test-only; no concurrent env access.
+    unsafe { std::env::set_var("CORKY_DATA", data.to_string_lossy().as_ref()) };
 
     std::fs::write(data.join(".corky.toml"), "").unwrap();
     let path = resolve::corky_toml();
@@ -96,7 +100,7 @@ fn test_corky_toml_finds_dotfile() {
         assert!(path.exists());
     }
 
-    std::env::remove_var("CORKY_DATA");
+    unsafe { std::env::remove_var("CORKY_DATA") };
 }
 
 #[test]
@@ -119,31 +123,34 @@ fn test_corky_toml_finds_plain() {
 fn test_sync_state_file_path() {
     let tmp = TempDir::new().unwrap();
     let data = tmp.path().to_path_buf();
-    std::env::set_var("CORKY_DATA", data.to_string_lossy().as_ref());
+    // SAFETY: Test-only; no concurrent env access.
+    unsafe { std::env::set_var("CORKY_DATA", data.to_string_lossy().as_ref()) };
 
     let sf = resolve::sync_state_file();
     assert!(sf.to_string_lossy().ends_with(".sync-state.json"));
 
-    std::env::remove_var("CORKY_DATA");
+    unsafe { std::env::remove_var("CORKY_DATA") };
 }
 
 #[test]
 fn test_manifest_file_path() {
     let tmp = TempDir::new().unwrap();
     let data = tmp.path().to_path_buf();
-    std::env::set_var("CORKY_DATA", data.to_string_lossy().as_ref());
+    // SAFETY: Test-only; no concurrent env access.
+    unsafe { std::env::set_var("CORKY_DATA", data.to_string_lossy().as_ref()) };
 
     let mf = resolve::manifest_file();
     assert!(mf.to_string_lossy().ends_with("manifest.toml"));
 
-    std::env::remove_var("CORKY_DATA");
+    unsafe { std::env::remove_var("CORKY_DATA") };
 }
 
 #[test]
 fn test_config_paths() {
     let tmp = TempDir::new().unwrap();
     let data = tmp.path().to_path_buf();
-    std::env::set_var("CORKY_DATA", data.to_string_lossy().as_ref());
+    // SAFETY: Test-only; no concurrent env access.
+    unsafe { std::env::set_var("CORKY_DATA", data.to_string_lossy().as_ref()) };
 
     let vm = resolve::voice_md();
     let cj = resolve::credentials_json();
@@ -151,6 +158,6 @@ fn test_config_paths() {
     assert!(vm.to_string_lossy().ends_with("voice.md"));
     assert!(cj.to_string_lossy().ends_with("credentials.json"));
 
-    std::env::remove_var("CORKY_DATA");
+    unsafe { std::env::remove_var("CORKY_DATA") };
 }
 
