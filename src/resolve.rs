@@ -61,6 +61,10 @@ pub fn mailbox_dir(name: &str) -> PathBuf {
     mailboxes_base_dir().join(name.to_lowercase())
 }
 
+pub fn templates_dir() -> PathBuf {
+    data_dir().join("templates")
+}
+
 pub fn sync_state_file() -> PathBuf {
     data_dir().join(".sync-state.json")
 }

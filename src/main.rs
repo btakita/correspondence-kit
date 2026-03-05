@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
 
-use corky::cli::{Cli, Commands, ContactCommands, DraftCommands, FilterCommands, LabelCommands, LinkedinCommands, MailboxCommands, ScheduleCommands, SlackCommands, SyncCommands, TopicCommands};
+use corky::cli::{Cli, Commands, ContactCommands, DocCommands, DraftCommands, FilterCommands, LabelCommands, LinkedinCommands, MailboxCommands, ScheduleCommands, SlackCommands, SyncCommands, TopicCommands};
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -201,6 +201,15 @@ fn main() -> Result<()> {
             }
             FilterCommands::Check { account } => {
                 corky::filter::check::run(account.as_deref())?;
+                Ok(())
+            }
+        },
+        Commands::Doc(cmd) => match cmd {
+            DocCommands::Build { file, format, template, output } => {
+                corky::doc::build::run(&file, &format, template.as_deref(), output.as_deref())
+            }
+            DocCommands::Upload { .. } => {
+                println!("corky doc upload is coming soon — requires Google Drive API OAuth.");
                 Ok(())
             }
         },

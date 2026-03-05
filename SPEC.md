@@ -1,10 +1,8 @@
 ---
-session: c80f3e69-053d-4606-bc0f-ca11e7bb2950
-resume: null
-agent: null
-model: null
-branch: null
+agent_doc_session: c80f3e69-053d-4606-bc0f-ca11e7bb2950
+tmux_session: '1'
 ---
+
 # Corky Functional Specification
 
 > Language-independent specification for the corky email sync and collaboration tool.
@@ -1380,4 +1378,52 @@ Run `corky watch` and it handles both IMAP sync and scheduled publishing.
 | S10 | Item within 30s grace window | Treated as due |
 | S11 | Publish fails (network) | Error logged, item stays scheduled, exit 1 |
 | S12 | `--dry-run` flag | Print what would happen, don't publish |
+
+## 14. Document Building
+
+### 14.1 Overview
+
+`corky doc build` converts markdown files to PDF or DOCX format using external tools (pandoc, weasyprint). CSS templates are supported for styling.
+
+### 14.2 CLI Interface
+
+```
+corky doc build <FILE>                      # PDF (default)
+corky doc build --format docx <FILE>        # DOCX
+corky doc build --template <NAME> <FILE>    # Named CSS template
+corky doc build -o <OUTPUT> <FILE>          # Custom output path
+```
+
+### 14.3 Format Pipelines
+
+| Format | Pipeline | Tools Required |
+|--------|----------|----------------|
+| PDF | Markdown → pandoc → HTML → weasyprint → PDF | pandoc, weasyprint |
+| DOCX | Markdown → pandoc → DOCX | pandoc |
+
+### 14.4 Template Resolution
+
+1. `--template <NAME>` CLI argument (highest priority)
+2. `template:` field in YAML frontmatter
+3. Default: `"proposal"`
+
+Template CSS loaded from `{data_dir}/templates/{template_name}.css`. If the file does not exist, the document is rendered without custom styles.
+
+### 14.5 Tool Checking
+
+Before conversion, `check_tool()` verifies that required tools (`pandoc`, `weasyprint`) are on PATH. If missing, an error message provides install links.
+
+### 14.6 Edge Cases
+
+| ID | Scenario | Behavior |
+|----|----------|----------|
+| D1 | Input file missing | Error: "Input file not found" |
+| D2 | Unsupported format | Error: "Use 'pdf' or 'docx'" |
+| D3 | pandoc not installed | Error with install URL |
+| D4 | weasyprint not installed (PDF only) | Error with install URL |
+| D5 | CSS template file missing | Render without custom styles |
+| D6 | No output path specified | Same directory as input, with format extension |
+| D7 | No frontmatter | Default template "proposal" |
+| D8 | pandoc fails | Temp HTML cleaned up, error reported |
+| D9 | weasyprint fails | Temp HTML cleaned up, error reported |
 

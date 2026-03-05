@@ -189,6 +189,10 @@ pub enum Commands {
     #[command(subcommand)]
     Filter(FilterCommands),
 
+    /// Document generation commands
+    #[command(subcommand)]
+    Doc(DocCommands),
+
     /// Transcribe an audio file to text (requires --features transcribe)
     Transcribe {
         /// Path to audio file (WAV, MP3, FLAC, OGG, AMR, etc.)
@@ -603,6 +607,36 @@ pub enum FilterCommands {
         /// Account name (must match the one used for auth)
         #[arg(long)]
         account: Option<String>,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum DocCommands {
+    /// Build a PDF or DOCX from a markdown file
+    Build {
+        /// Path to the markdown file
+        file: PathBuf,
+
+        /// Output format: pdf (default) or docx
+        #[arg(long, default_value = "pdf", value_parser = ["pdf", "docx"])]
+        format: String,
+
+        /// Template name (looks up templates/<name>.css in data dir)
+        #[arg(long)]
+        template: Option<String>,
+
+        /// Output file path (default: input path with new extension)
+        #[arg(long, short)]
+        output: Option<String>,
+    },
+    /// Upload a document to Google Drive (coming soon)
+    Upload {
+        /// Path to the file to upload
+        file: PathBuf,
+
+        /// Share the uploaded file
+        #[arg(long)]
+        share: bool,
     },
 }
 
