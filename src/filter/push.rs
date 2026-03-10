@@ -88,7 +88,10 @@ pub fn run(account: Option<&str>, dry_run: bool) -> Result<()> {
     let access_token = gmail_auth::get_access_token(account)?;
 
     // 3. Fetch label name→ID mapping
-    let label_map = fetch_label_map(&access_token)?;
+    let mut label_map = fetch_label_map(&access_token)?;
+
+    // 3b. Create any missing labels referenced by filters
+    ensure_labels(&gmail.filters, &mut label_map, &access_token)?;
 
     // 4. Convert config filters to API format
     let api_filters = convert_filters(&gmail.filters, &label_map)?;
@@ -181,6 +184,38 @@ pub(crate) fn fetch_label_map(token: &str) -> Result<HashMap<String, String>> {
         map.insert(label.name.to_lowercase(), label.id);
     }
     Ok(map)
+}
+
+/// Ensure all user labels referenced by filters exist in Gmail.
+/// Creates any missing labels via the API and updates the label map.
+fn ensure_labels(
+    filters: &[GmailFilter],
+    label_map: &mut HashMap<String, String>,
+    token: &str,
+) -> Result<()> {
+    for filt in filters {
+        if let Some(ref label_name) = filt.label {
+            // Skip system labels
+            let upper = label_name.to_uppercase();
+            if matches!(
+                upper.as_str(),
+                "INBOX" | "STARRED" | "IMPORTANT" | "SENT" | "DRAFT" | "SPAM" | "TRASH" | "UNREAD"
+            ) || upper.starts_with("CATEGORY_")
+            {
+                continue;
+            }
+
+            // Create if missing
+            if let std::collections::hash_map::Entry::Vacant(e) =
+                label_map.entry(label_name.to_lowercase())
+            {
+                println!("Creating missing Gmail label '{}'...", label_name);
+                let id = create_gmail_label(token, label_name)?;
+                e.insert(id);
+            }
+        }
+    }
+    Ok(())
 }
 
 fn resolve_label_id(name: &str, label_map: &HashMap<String, String>) -> Result<String> {
@@ -317,6 +352,34 @@ fn delete_filter(token: &str, filter_id: &str) -> Result<()> {
             bail!(
                 "Failed to delete filter {} (HTTP {}): {}",
                 filter_id,
+                status,
+                err_body
+            );
+        }
+        Err(e) => Err(e.into()),
+    }
+}
+
+/// Create a Gmail label via the API and return its ID.
+fn create_gmail_label(token: &str, name: &str) -> Result<String> {
+    let url = format!("{}/labels", GMAIL_API);
+    let body = serde_json::json!({ "name": name });
+    match ureq::post(&url)
+        .set("Authorization", &format!("Bearer {}", token))
+        .set("Content-Type", "application/json")
+        .send_json(body)
+    {
+        Ok(resp) => {
+            let entry: GmailLabelEntry = resp
+                .into_json()
+                .context("Failed to parse label creation response")?;
+            Ok(entry.id)
+        }
+        Err(ureq::Error::Status(status, resp)) => {
+            let err_body = resp.into_string().unwrap_or_default();
+            bail!(
+                "Failed to create label '{}' (HTTP {}): {}",
+                name,
                 status,
                 err_body
             );
