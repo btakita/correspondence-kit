@@ -50,7 +50,7 @@ ort = { version = "=2.0.0-rc.10", optional = true, features = ["ndarray"] }
 quick-xml = { version = "0.39.2", features = ["serialize"] }
 
 [features]
-default = []
+default = ["transcribe"]
 vendored-openssl = ["openssl"]
 transcribe = ["whisper-rs", "symphonia", "rubato", "hound"]
 transcribe-cuda = ["transcribe", "whisper-rs/cuda"]

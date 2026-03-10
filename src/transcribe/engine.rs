@@ -227,6 +227,7 @@ fn format_speakers(
 }
 
 /// Collect whisper segments as structured data (centisecond timestamps + text).
+#[cfg(feature = "diarize")]
 fn collect_whisper_segments(
     state: &whisper_rs::WhisperState,
     n_segments: i32,
