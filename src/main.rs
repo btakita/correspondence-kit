@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
 
-use corky::cli::{CalCommands, Cli, Commands, ContactCommands, DocCommands, DraftCommands, FilterCommands, LabelCommands, LinkedinCommands, MailboxCommands, ScheduleCommands, SkillCommands, SlackCommands, SyncCommands, TopicCommands};
+use corky::cli::{CalCommands, Cli, Commands, ContactCommands, DocCommands, DraftCommands, FilterCommands, LabelCommands, LinkedinCommands, MailboxCommands, ScheduleCommands, SkillCommands, SlackCommands, SyncCommands, TopicCommands, YoutubeCommands};
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -163,11 +163,34 @@ fn main() -> Result<()> {
                 &tags,
             ),
             LinkedinCommands::Publish { file, dry_run } => corky::social::run_publish(&file, dry_run),
+            LinkedinCommands::Edit { file, body } => {
+                corky::social::run_edit(&file, body.as_deref())
+            }
             LinkedinCommands::Check => corky::social::run_check(),
             LinkedinCommands::List { status } => corky::social::run_list(status.as_deref()),
             LinkedinCommands::RenameAuthor { old, new } => {
                 corky::social::run_rename_author(&old, &new)
             }
+        },
+        Commands::Youtube(cmd) => match cmd {
+            YoutubeCommands::Auth { profile } => {
+                corky::social::run_auth("youtube", profile.as_deref())
+            }
+            YoutubeCommands::Draft {
+                body,
+                author,
+                visibility,
+                tags,
+            } => corky::social::run_draft(
+                "youtube",
+                body.as_deref(),
+                author.as_deref(),
+                &visibility,
+                &tags,
+            ),
+            YoutubeCommands::Publish { file, dry_run } => corky::social::run_publish(&file, dry_run),
+            YoutubeCommands::Check => corky::social::run_check(),
+            YoutubeCommands::List { status } => corky::social::run_list(status.as_deref()),
         },
         Commands::Schedule(cmd) => match cmd {
             ScheduleCommands::Run { dry_run } => corky::schedule::run(dry_run),

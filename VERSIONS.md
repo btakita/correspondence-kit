@@ -4,6 +4,21 @@ Corky is alpha software. Expect breaking changes between minor versions.
 
 Use `BREAKING CHANGE:` prefix in version entries to flag incompatible changes.
 
+## 0.15.0
+
+- **YouTube upload**: `corky youtube auth/draft/publish` commands for uploading videos to YouTube via Data API v3. Resumable upload with 8MB chunks, SRT captions upload, draft frontmatter with video/captions/title fields.
+- **LinkedIn post editing**: `corky linkedin edit <file> [--body TEXT]` updates published LinkedIn posts via PARTIAL_UPDATE API. Text-only updates (images/visibility immutable post-publish).
+- **Profiles consolidation**: Profile loading now checks `.corky.toml [profiles]` section first, with fallback to standalone `profiles.toml`. Configuration convention: all corky config belongs in `.corky.toml`.
+- **AGENTS.md configuration convention**: Added `## Configuration` section documenting single-config-file convention.
+
+## 0.14.1
+
+- **Docs update**: Updated README and SPEC for transcribe enabled by default.
+
+## 0.14.0
+
+- **CPU transcription by default**: `default = ["transcribe"]` — `cargo install corky` now includes CPU transcription out of the box. GPU stays opt-in via `--features transcribe-cuda`.
+
 ## 0.13.4
 
 - **Unified corky skill via agent-kit**: Bundle `SKILL.md` via `include_str!`, replacing separate `.claude/skills/email/` and `.claude/skills/agent-doc/` directories. `corky skill install/check` commands wired via `agent_kit::skill::SkillConfig`. Added `agent-kit` dependency.

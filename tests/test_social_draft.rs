@@ -150,6 +150,9 @@ fn d8_render_parse_roundtrip() {
         post_id: None,
         post_url: None,
         images: vec![],
+        video: None,
+        captions: None,
+        title: None,
     };
 
     let original = SocialDraft::new(meta, "Test body content.\n".to_string());
@@ -245,6 +248,9 @@ fn im4_roundtrip_with_images() {
         post_id: None,
         post_url: None,
         images: vec!["assets/screenshot.png".to_string(), "assets/diagram.png".to_string()],
+        video: None,
+        captions: None,
+        title: None,
     };
 
     let original = SocialDraft::new(meta, "Post with images.\n".to_string());
@@ -270,6 +276,9 @@ fn im6_empty_images_omitted_in_yaml() {
         post_id: None,
         post_url: None,
         images: vec![],
+        video: None,
+        captions: None,
+        title: None,
     };
 
     let draft = SocialDraft::new(meta, "Body.\n".to_string());

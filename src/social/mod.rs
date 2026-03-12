@@ -7,6 +7,7 @@ pub mod platform;
 pub mod profiles;
 pub mod publish;
 pub mod token_store;
+pub mod youtube;
 
 use anyhow::{bail, Result};
 use std::path::Path;
@@ -64,6 +65,9 @@ pub fn run_draft(
         post_id: None,
         post_url: None,
         images: vec![],
+        video: None,
+        captions: None,
+        title: None,
     };
 
     let body_text = body.unwrap_or("").to_string();
@@ -93,24 +97,73 @@ pub fn run_publish(file: &Path, dry_run: bool) -> Result<()> {
     publish::publish(file, dry_run)
 }
 
-/// Run the `social check` command: validate profiles.toml.
-pub fn run_check() -> Result<()> {
-    let path = resolve::profiles_toml();
-    if !path.exists() {
-        println!("profiles.toml not found at {}", path.display());
-        println!("\nCreate it with content like:");
-        println!("  [btakita]");
-        println!("  [btakita.linkedin]");
-        println!("  handle = \"brian-takita\"");
-        println!("  urn = \"urn:li:person:abc123\"");
-        return Ok(());
+/// Run the `social edit` command: update a published post's commentary.
+pub fn run_edit(file: &Path, body: Option<&str>) -> Result<()> {
+    let content = std::fs::read_to_string(file)?;
+    let draft = SocialDraft::parse(&content)?;
+
+    let post_id = draft.meta.post_id.clone().ok_or_else(|| {
+        anyhow::anyhow!("Post has not been published yet — no post_id in frontmatter.")
+    })?;
+
+    let commentary = match body {
+        Some(b) => b.to_string(),
+        None => draft.body.clone(),
+    };
+
+    if commentary.trim().is_empty() {
+        bail!("Post body is empty. Provide --body or add text to the draft file.");
     }
 
-    let profiles = ProfilesFile::load_from(&path)?;
+    // Resolve author → URN → token (same as publish flow)
+    let profiles = ProfilesFile::load()?;
+    let platform = draft.meta.platform;
+    let author = &draft.meta.author;
+    let urn = profiles.resolve_urn(author, platform)?;
+
+    let store = token_store::TokenStore::load()?;
+    let token = store.get_valid(&urn).ok_or_else(|| {
+        anyhow::anyhow!(
+            "No valid token for {} ({}).\nRun `corky linkedin auth` to authenticate.",
+            author,
+            urn,
+        )
+    })?;
+
+    linkedin::update_post(&token.access_token, &post_id, &commentary)?;
+
+    // If body came from the file (no --body override), the file is already up to date.
+    // If --body was provided, update the draft file body to match.
+    if body.is_some() {
+        let mut draft = draft;
+        draft.body = commentary;
+        let rendered = draft.render()?;
+        std::fs::write(file, rendered)?;
+    }
+
+    println!("Updated LinkedIn post: https://www.linkedin.com/feed/update/{}", post_id);
+    Ok(())
+}
+
+/// Run the `social check` command: validate profiles in .corky.toml (or profiles.toml fallback).
+pub fn run_check() -> Result<()> {
+    let profiles = match ProfilesFile::load() {
+        Ok(p) => p,
+        Err(_) => {
+            let corky_path = resolve::corky_toml();
+            println!("No [profiles] section found in {}", corky_path.display());
+            println!("\nAdd profiles to .corky.toml like:");
+            println!("  [profiles.btakita.linkedin]");
+            println!("  handle = \"brian-takita\"");
+            println!("  urn = \"urn:li:person:abc123\"");
+            return Ok(());
+        }
+    };
+
     let result = profiles.validate();
 
     if result.errors.is_empty() && result.warnings.is_empty() && result.info.is_empty() {
-        println!("profiles.toml OK ({} profiles)", profiles.profiles.len());
+        println!("profiles OK ({} profiles)", profiles.profiles.len());
         return Ok(());
     }
 
@@ -125,7 +178,7 @@ pub fn run_check() -> Result<()> {
     }
 
     if !result.is_ok() {
-        bail!("profiles.toml has {} error(s)", result.errors.len());
+        bail!("profiles have {} error(s)", result.errors.len());
     }
     Ok(())
 }
@@ -182,7 +235,21 @@ pub fn run_list(status_filter: Option<&str>) -> Result<()> {
 pub fn run_rename_author(old: &str, new: &str) -> Result<()> {
     let mut count = 0;
 
-    // Rename in profiles.toml
+    // Rename in .corky.toml [profiles] section (or fallback profiles.toml)
+    let corky_path = resolve::corky_toml();
+    if corky_path.exists() {
+        let content = std::fs::read_to_string(&corky_path)?;
+        let mut doc = content.parse::<toml_edit::DocumentMut>()?;
+        if let Some(profiles_table) = doc.get_mut("profiles").and_then(|v| v.as_table_mut()) {
+            if let Some(item) = profiles_table.remove(old) {
+                profiles_table.insert(new, item);
+                std::fs::write(&corky_path, doc.to_string())?;
+                println!("Renamed profile '{}' -> '{}' in .corky.toml", old, new);
+                count += 1;
+            }
+        }
+    }
+    // Also check standalone profiles.toml for backward compat
     let profiles_path = resolve::profiles_toml();
     if profiles_path.exists() {
         let content = std::fs::read_to_string(&profiles_path)?;

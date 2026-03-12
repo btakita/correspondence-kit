@@ -154,6 +154,12 @@ Follow a research → plan → implement cycle. Never write code until the plan 
 
 Publish order when instruction-files changes: instruction-files → agent-doc → corky.
 
+## Configuration
+
+**Single config file:** All corky configuration belongs in `.corky.toml`. Do not create separate `*.toml` files for new features (e.g., no `profiles.toml`, `filters.toml`, etc.). Nest new config sections under `.corky.toml` using TOML tables (e.g., `[profiles.btakita.linkedin]`, `[youtube]`).
+
+**Existing exception:** `profiles.toml` currently exists as a separate file — it should be consolidated into `.corky.toml` under a `[profiles]` section.
+
 ## Conventions
 
 - Use `make check` (clippy + test), `make release` (build + .bin symlink) for development

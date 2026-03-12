@@ -24,6 +24,9 @@ fn ready_meta() -> SocialDraftMeta {
         post_id: None,
         post_url: None,
         images: vec![],
+        video: None,
+        captions: None,
+        title: None,
     }
 }
 

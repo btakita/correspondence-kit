@@ -9,6 +9,7 @@ use crate::accounts::{Account, OwnerConfig, WatchConfig};
 use crate::config::contact::Contact;
 use crate::config::topic::TopicConfig;
 use crate::resolve;
+use crate::social::profiles::Profile;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CorkyConfig {
@@ -29,9 +30,13 @@ pub struct CorkyConfig {
     #[serde(default)]
     pub linkedin: Option<OAuthClientConfig>,
     #[serde(default)]
+    pub youtube: Option<OAuthClientConfig>,
+    #[serde(default)]
     pub topics: HashMap<String, TopicConfig>,
     #[serde(default)]
     pub transcription: Option<TranscriptionConfig>,
+    #[serde(default)]
+    pub profiles: HashMap<String, Profile>,
 }
 
 /// Gmail API config + filter rules (lives in .corky.toml under [gmail]).

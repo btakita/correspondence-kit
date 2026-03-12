@@ -178,6 +178,10 @@ pub enum Commands {
     #[command(subcommand)]
     Linkedin(LinkedinCommands),
 
+    /// YouTube video upload commands
+    #[command(subcommand)]
+    Youtube(YoutubeCommands),
+
     /// Scheduled publishing commands
     #[command(subcommand)]
     Schedule(ScheduleCommands),
@@ -464,7 +468,7 @@ pub enum MailboxCommands {
 pub enum LinkedinCommands {
     /// Authenticate with LinkedIn (OAuth)
     Auth {
-        /// Profile name in profiles.toml to update with URN
+        /// Profile name in .corky.toml [profiles] to update with URN
         #[arg(long)]
         profile: Option<String>,
     },
@@ -496,7 +500,16 @@ pub enum LinkedinCommands {
         dry_run: bool,
     },
 
-    /// Validate profiles.toml
+    /// Edit a published LinkedIn post
+    Edit {
+        /// Path to the published draft file
+        file: PathBuf,
+        /// New post text (reads from file body if omitted)
+        #[arg(long)]
+        body: Option<String>,
+    },
+
+    /// Validate profiles in .corky.toml
     Check,
 
     /// List LinkedIn drafts
@@ -513,6 +526,53 @@ pub enum LinkedinCommands {
 
         /// New author name
         new: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum YoutubeCommands {
+    /// Authenticate with YouTube (Google OAuth)
+    Auth {
+        /// Profile name in .corky.toml [profiles] to update with channel ID
+        #[arg(long)]
+        profile: Option<String>,
+    },
+
+    /// Create a new YouTube video draft
+    Draft {
+        /// Post body text (description)
+        body: Option<String>,
+
+        /// Author profile name
+        #[arg(long)]
+        author: Option<String>,
+
+        /// Video visibility (public, unlisted, private)
+        #[arg(long, default_value = "private")]
+        visibility: String,
+
+        /// Comma-separated tags
+        #[arg(long, value_delimiter = ',')]
+        tags: Vec<String>,
+    },
+
+    /// Publish a ready YouTube draft (upload video)
+    Publish {
+        /// Path to the draft file
+        file: PathBuf,
+        /// Validate and show payload without actually publishing
+        #[arg(long)]
+        dry_run: bool,
+    },
+
+    /// Validate profiles in .corky.toml
+    Check,
+
+    /// List YouTube drafts
+    List {
+        /// Filter by status: draft, ready, published
+        #[arg(long)]
+        status: Option<String>,
     },
 }
 

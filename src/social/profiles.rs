@@ -8,6 +8,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 use super::platform::Platform;
+use crate::config::corky_config;
 use crate::resolve;
 
 /// A single platform entry within a profile.
@@ -29,6 +30,8 @@ pub struct Profile {
     pub mastodon: Option<PlatformEntry>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub twitter: Option<PlatformEntry>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub youtube: Option<PlatformEntry>,
 }
 
 impl Profile {
@@ -39,6 +42,7 @@ impl Profile {
             Platform::Bluesky => self.bluesky.as_ref(),
             Platform::Mastodon => self.mastodon.as_ref(),
             Platform::Twitter => self.twitter.as_ref(),
+            Platform::Youtube => self.youtube.as_ref(),
         }
     }
 
@@ -56,6 +60,9 @@ impl Profile {
         }
         if let Some(e) = &self.twitter {
             entries.push((Platform::Twitter, e));
+        }
+        if let Some(e) = &self.youtube {
+            entries.push((Platform::Youtube, e));
         }
         entries
     }
@@ -83,8 +90,17 @@ impl ValidationResult {
 }
 
 impl ProfilesFile {
-    /// Load profiles.toml from the default location.
+    /// Load profiles from .corky.toml [profiles] section, falling back to profiles.toml.
     pub fn load() -> Result<Self> {
+        // Prefer [profiles] section in .corky.toml
+        if let Some(config) = corky_config::try_load_config(None) {
+            if !config.profiles.is_empty() {
+                return Ok(ProfilesFile {
+                    profiles: config.profiles,
+                });
+            }
+        }
+        // Fallback to standalone profiles.toml
         let path = resolve::profiles_toml();
         Self::load_from(&path)
     }

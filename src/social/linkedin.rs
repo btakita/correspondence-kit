@@ -107,6 +107,66 @@ pub fn upload_image_at(
     Ok(image_urn)
 }
 
+/// Update an existing LinkedIn post's commentary via PARTIAL_UPDATE.
+///
+/// Returns `Ok(())` on success (HTTP 204 No Content).
+pub fn update_post(access_token: &str, post_urn: &str, commentary: &str) -> Result<()> {
+    update_post_at(API_BASE, access_token, post_urn, commentary)
+}
+
+/// Update a post with configurable API base URL (for testing).
+pub fn update_post_at(
+    api_base: &str,
+    access_token: &str,
+    post_urn: &str,
+    commentary: &str,
+) -> Result<()> {
+    let char_count = commentary.chars().count();
+    if char_count > MAX_BODY_LENGTH {
+        bail!(
+            "Post body exceeds LinkedIn's {} character limit ({} characters)",
+            MAX_BODY_LENGTH,
+            char_count
+        );
+    }
+
+    // URL-encode the URN (colons → %3A, commas → %2C)
+    let encoded_urn = post_urn
+        .replace('%', "%25")
+        .replace(':', "%3A")
+        .replace(',', "%2C")
+        .replace('(', "%28")
+        .replace(')', "%29");
+    let url = format!("{}/rest/posts/{}", api_base, encoded_urn);
+    let payload = serde_json::json!({
+        "patch": {
+            "$set": {
+                "commentary": commentary
+            }
+        }
+    });
+
+    let resp = ureq::post(&url)
+        .set("Authorization", &format!("Bearer {}", access_token))
+        .set("X-RestLi-Method", "PARTIAL_UPDATE")
+        .set("LinkedIn-Version", "202401")
+        .set("Content-Type", "application/json")
+        .send_json(&payload);
+
+    match resp {
+        Ok(_) => Ok(()),
+        Err(ureq::Error::Status(status, resp)) => {
+            let body = resp.into_string().unwrap_or_default();
+            bail!(
+                "LinkedIn API error (HTTP {}): {}",
+                status,
+                body
+            );
+        }
+        Err(e) => bail!("LinkedIn API request failed: {}", e),
+    }
+}
+
 /// Create a post on LinkedIn using the REST API.
 ///
 /// `image_urns` controls the post type:

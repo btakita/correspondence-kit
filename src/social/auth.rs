@@ -5,7 +5,6 @@ use chrono::{Duration, Utc};
 
 use super::platform::Platform;
 use super::token_store::{StoredToken, TokenStore};
-use super::profiles::{PlatformEntry, ProfilesFile};
 use crate::config::corky_config;
 
 const REDIRECT_URI: &str = "http://127.0.0.1:8484/callback";
@@ -13,6 +12,12 @@ const CALLBACK_TIMEOUT_SECS: u64 = 120;
 
 /// LinkedIn OAuth scopes.
 const LINKEDIN_SCOPES: &[&str] = &["openid", "profile", "w_member_social"];
+
+/// YouTube OAuth scopes.
+const YOUTUBE_SCOPES: &[&str] = &[
+    "https://www.googleapis.com/auth/youtube.upload",
+    "https://www.googleapis.com/auth/youtube.readonly",
+];
 
 /// Client credentials resolved from .corky.toml or env vars.
 struct ClientCredentials {
@@ -61,6 +66,42 @@ fn resolve_credentials(platform: Platform) -> Result<ClientCredentials> {
                 client_secret,
             })
         }
+        Platform::Youtube => {
+            // Try .corky.toml first (inline or _cmd)
+            if let Some(cfg) = corky_config::try_load_config(None) {
+                if let Some(yt) = &cfg.youtube {
+                    let has_config = !yt.client_id.is_empty()
+                        || !yt.client_id_cmd.is_empty()
+                        || !yt.client_secret.is_empty()
+                        || !yt.client_secret_cmd.is_empty();
+                    if has_config {
+                        let client_id = crate::util::resolve_secret(
+                            &yt.client_id,
+                            &yt.client_id_cmd,
+                            "YouTube client_id (check [youtube] in .corky.toml)",
+                        )?;
+                        let client_secret = crate::util::resolve_secret(
+                            &yt.client_secret,
+                            &yt.client_secret_cmd,
+                            "YouTube client_secret (check [youtube] in .corky.toml)",
+                        )?;
+                        return Ok(ClientCredentials {
+                            client_id,
+                            client_secret,
+                        });
+                    }
+                }
+            }
+            // Fall back to env vars
+            let client_id = std::env::var("CORKY_YOUTUBE_CLIENT_ID")
+                .context("YouTube client_id not found.\nSet [youtube] in .corky.toml or CORKY_YOUTUBE_CLIENT_ID env var.")?;
+            let client_secret = std::env::var("CORKY_YOUTUBE_CLIENT_SECRET")
+                .context("YouTube client_secret not found.\nSet [youtube] in .corky.toml or CORKY_YOUTUBE_CLIENT_SECRET env var.")?;
+            Ok(ClientCredentials {
+                client_id,
+                client_secret,
+            })
+        }
         _ => bail!("OAuth not yet implemented for {}", platform),
     }
 }
@@ -90,6 +131,24 @@ pub fn build_auth_url(platform: Platform) -> Result<(String, String)> {
                  &redirect_uri={}\
                  &state={}\
                  &scope={}",
+                urlencode(&creds.client_id),
+                urlencode(REDIRECT_URI),
+                urlencode(&state),
+                scopes,
+            );
+            Ok((url, state))
+        }
+        Platform::Youtube => {
+            let scopes = YOUTUBE_SCOPES.join("%20");
+            let url = format!(
+                "https://accounts.google.com/o/oauth2/v2/auth\
+                 ?response_type=code\
+                 &client_id={}\
+                 &redirect_uri={}\
+                 &state={}\
+                 &scope={}\
+                 &access_type=offline\
+                 &prompt=consent",
                 urlencode(&creds.client_id),
                 urlencode(REDIRECT_URI),
                 urlencode(&state),
@@ -191,6 +250,42 @@ fn exchange_code(platform: Platform, code: &str) -> Result<StoredToken> {
                 platform: platform.to_string(),
             })
         }
+        Platform::Youtube => {
+            let body_str = format!(
+                "grant_type=authorization_code&code={}&redirect_uri={}&client_id={}&client_secret={}",
+                urlencode(code),
+                urlencode(REDIRECT_URI),
+                urlencode(&creds.client_id),
+                urlencode(&creds.client_secret),
+            );
+            let resp = match ureq::post("https://oauth2.googleapis.com/token")
+                .set("Content-Type", "application/x-www-form-urlencoded")
+                .send_string(&body_str)
+            {
+                Ok(r) => r,
+                Err(ureq::Error::Status(status, resp)) => {
+                    let err_body = resp.into_string().unwrap_or_default();
+                    bail!("Token exchange failed (HTTP {}): {}", status, err_body);
+                }
+                Err(e) => return Err(e.into()),
+            };
+
+            let body: serde_json::Value = resp.into_json()?;
+            let access_token = body["access_token"]
+                .as_str()
+                .ok_or_else(|| anyhow::anyhow!("Missing access_token in response"))?
+                .to_string();
+            let expires_in = body["expires_in"].as_i64().unwrap_or(3600);
+            let refresh_token = body["refresh_token"].as_str().map(|s| s.to_string());
+
+            Ok(StoredToken {
+                access_token,
+                refresh_token,
+                expires_at: Utc::now() + Duration::seconds(expires_in),
+                scopes: YOUTUBE_SCOPES.iter().map(|s| s.to_string()).collect(),
+                platform: platform.to_string(),
+            })
+        }
         _ => bail!("Token exchange not yet implemented for {}", platform),
     }
 }
@@ -240,12 +335,17 @@ pub fn run(platform: Platform, profile_name: Option<&str>) -> Result<()> {
     println!("Exchanging authorization code...");
     let token = exchange_code(platform, &code)?;
 
-    // Get user URN (for LinkedIn)
+    // Get user URN / channel ID
     let urn = match platform {
         Platform::LinkedIn => {
             let urn = super::linkedin::get_user_urn(&token.access_token)?;
             println!("Authenticated as URN: {}", urn);
             urn
+        }
+        Platform::Youtube => {
+            let channel_id = super::youtube::get_channel_id(&token.access_token)?;
+            println!("Authenticated as channel: {}", channel_id);
+            channel_id
         }
         _ => bail!("URN retrieval not yet implemented for {}", platform),
     };
@@ -264,50 +364,44 @@ pub fn run(platform: Platform, profile_name: Option<&str>) -> Result<()> {
     Ok(())
 }
 
-/// Update the URN in profiles.toml for a given profile/platform.
+/// Update the URN in .corky.toml [profiles] section for a given profile/platform.
+///
+/// Uses toml_edit for format-preserving writes.
 fn update_profile_urn(profile_name: &str, platform: Platform, urn: &str) -> Result<()> {
-    let path = crate::resolve::profiles_toml();
-    let mut profiles = if path.exists() {
-        ProfilesFile::load_from(&path)?
+    let path = crate::resolve::corky_toml();
+    let content = if path.exists() {
+        std::fs::read_to_string(&path)?
     } else {
-        ProfilesFile::default()
+        String::new()
     };
+    let mut doc = content.parse::<toml_edit::DocumentMut>()?;
 
-    let profile = profiles.profiles.entry(profile_name.to_string()).or_insert_with(|| {
-        super::profiles::Profile {
-            linkedin: None,
-            bluesky: None,
-            mastodon: None,
-            twitter: None,
-        }
-    });
+    // Ensure [profiles] table exists
+    if !doc.contains_key("profiles") {
+        doc.insert("profiles", toml_edit::Item::Table(toml_edit::Table::new()));
+    }
+    let profiles = doc["profiles"].as_table_mut().unwrap();
 
-    // Update or create the platform entry
-    let entry = match platform {
-        Platform::LinkedIn => profile.linkedin.get_or_insert_with(|| PlatformEntry {
-            handle: String::new(),
-            urn: None,
-        }),
-        Platform::Bluesky => profile.bluesky.get_or_insert_with(|| PlatformEntry {
-            handle: String::new(),
-            urn: None,
-        }),
-        Platform::Mastodon => profile.mastodon.get_or_insert_with(|| PlatformEntry {
-            handle: String::new(),
-            urn: None,
-        }),
-        Platform::Twitter => profile.twitter.get_or_insert_with(|| PlatformEntry {
-            handle: String::new(),
-            urn: None,
-        }),
-    };
-    entry.urn = Some(urn.to_string());
+    // Ensure [profiles.<name>] table exists
+    if !profiles.contains_key(profile_name) {
+        profiles.insert(profile_name, toml_edit::Item::Table(toml_edit::Table::new()));
+    }
+    let profile = profiles[profile_name].as_table_mut().unwrap();
 
-    let content = toml::to_string_pretty(&profiles)?;
+    let platform_key = platform.as_str();
+    // Ensure [profiles.<name>.<platform>] table exists
+    if !profile.contains_key(platform_key) {
+        let mut table = toml_edit::Table::new();
+        table.insert("handle", toml_edit::value(""));
+        profile.insert(platform_key, toml_edit::Item::Table(table));
+    }
+    let platform_table = profile[platform_key].as_table_mut().unwrap();
+    platform_table.insert("urn", toml_edit::value(urn));
+
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    std::fs::write(&path, content)?;
-    println!("Updated profiles.toml: {}.{}.urn = {}", profile_name, platform, urn);
+    std::fs::write(&path, doc.to_string())?;
+    println!("Updated .corky.toml: profiles.{}.{}.urn = {}", profile_name, platform_key, urn);
     Ok(())
 }

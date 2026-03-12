@@ -11,6 +11,7 @@ pub enum Platform {
     Bluesky,
     Mastodon,
     Twitter,
+    Youtube,
 }
 
 impl Platform {
@@ -19,6 +20,7 @@ impl Platform {
         Platform::Bluesky,
         Platform::Mastodon,
         Platform::Twitter,
+        Platform::Youtube,
     ];
 
     pub fn as_str(&self) -> &'static str {
@@ -27,6 +29,7 @@ impl Platform {
             Platform::Bluesky => "bluesky",
             Platform::Mastodon => "mastodon",
             Platform::Twitter => "twitter",
+            Platform::Youtube => "youtube",
         }
     }
 }
@@ -46,6 +49,7 @@ impl FromStr for Platform {
             "bluesky" => Ok(Platform::Bluesky),
             "mastodon" => Ok(Platform::Mastodon),
             "twitter" => Ok(Platform::Twitter),
+            "youtube" => Ok(Platform::Youtube),
             _ => {
                 let supported: Vec<&str> = Platform::ALL.iter().map(|p| p.as_str()).collect();
                 anyhow::bail!(

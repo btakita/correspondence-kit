@@ -1140,6 +1140,7 @@ Corky supports publishing social media posts through a unified multi-platform ar
 | Platform | Status | API |
 |---|---|---|
 | LinkedIn | Implemented | REST (OAuth2 authorization code) |
+| YouTube | Implemented | Data API v3 (OAuth2 authorization code) |
 | Bluesky | Planned | AT Protocol |
 | Mastodon | Planned | ActivityPub |
 | Twitter | Planned | OAuth2 |
@@ -1242,6 +1243,7 @@ corky linkedin publish <file>                     # Publish ready draft
 corky linkedin check                              # Validate profiles.toml
 corky linkedin list [--status X]                  # List LinkedIn drafts
 corky linkedin rename-author <old> <new>          # Rename across drafts + profiles
+corky linkedin edit <file> [--body TEXT]           # Update published post text
 ```
 
 ### 12.8 Edge Case Table
@@ -1524,4 +1526,68 @@ corky sync sms-import PATH [--label LABEL] [--account ACCOUNT]
 - `PATH`: Path to SMS backup XML file
 - `--label`: Label for imported conversations (default: "sms")
 - `--account`: Account name (default: "sms")
+
+## § 17 YouTube
+
+### 17.1 Overview
+
+YouTube integration supports video upload and caption management via the YouTube Data API v3.
+
+### 17.2 Configuration
+
+```toml
+[youtube]
+client_id_cmd = "pass corky/youtube/client_id"
+client_secret_cmd = "pass corky/youtube/client_secret"
+```
+
+### 17.3 OAuth Flow
+
+Authorization code flow (Google OAuth2):
+1. `corky youtube auth` opens browser → Google consent screen (scopes: `youtube.upload`, `youtube.force-ssl`)
+2. User authorizes, callback writes refresh token to token store
+3. Subsequent commands use refresh token → access token auto-refresh
+
+### 17.4 Draft Format
+
+YouTube drafts extend the social draft format with additional fields:
+
+```yaml
+platform: youtube
+author: btakita
+visibility: unlisted
+title: "Video Title"
+video: /path/to/video.mp4
+captions: /path/to/captions.srt
+tags:
+  - tag1
+  - tag2
+```
+
+### 17.5 Upload Flow
+
+1. Read draft file, resolve video path
+2. Initialize resumable upload (POST to upload URI with metadata)
+3. Stream video in 8MB chunks (PUT to upload URL)
+4. On completion, extract video ID from response
+5. If captions file specified, upload SRT via captions API
+6. Update draft with `post_id` and `post_url`
+
+### 17.6 CLI Commands
+
+```
+corky youtube auth                                  # Google OAuth2 flow
+corky youtube draft [BODY] [--author X] [--video PATH] [--captions PATH] [--title TEXT]
+corky youtube publish <file>                        # Upload video + captions
+corky youtube check                                 # Validate YouTube profiles
+corky youtube list [--status X]                     # List YouTube drafts
+```
+
+### 17.7 Constraints
+
+- Maximum video file size: handled by resumable upload (no practical limit)
+- Chunk size: 8MB (configurable internally)
+- Captions: SRT format only
+- Visibility: public, unlisted, or private
+- Category ID defaults to 28 (Science & Technology)
 
