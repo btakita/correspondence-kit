@@ -120,7 +120,8 @@ pub fn upload_video_at(
             "categoryId": if metadata.category_id.is_empty() { "22" } else { &metadata.category_id }
         },
         "status": {
-            "privacyStatus": privacy_status
+            "privacyStatus": privacy_status,
+            "embeddable": true
         }
     });
 
@@ -231,7 +232,8 @@ pub fn update_video_at(
             "categoryId": if metadata.category_id.is_empty() { "22" } else { &metadata.category_id }
         },
         "status": {
-            "privacyStatus": privacy_status
+            "privacyStatus": privacy_status,
+            "embeddable": true
         }
     });
 
