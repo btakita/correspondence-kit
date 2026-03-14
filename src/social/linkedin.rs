@@ -149,7 +149,7 @@ pub fn update_post_at(
     let resp = ureq::post(&url)
         .set("Authorization", &format!("Bearer {}", access_token))
         .set("X-RestLi-Method", "PARTIAL_UPDATE")
-        .set("LinkedIn-Version", "202401")
+        .set("LinkedIn-Version", "202601")
         .set("Content-Type", "application/json")
         .send_json(&payload);
 

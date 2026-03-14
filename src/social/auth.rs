@@ -17,6 +17,7 @@ const LINKEDIN_SCOPES: &[&str] = &["openid", "profile", "w_member_social"];
 const YOUTUBE_SCOPES: &[&str] = &[
     "https://www.googleapis.com/auth/youtube.upload",
     "https://www.googleapis.com/auth/youtube.readonly",
+    "https://www.googleapis.com/auth/youtube.force-ssl",
 ];
 
 /// Client credentials resolved from .corky.toml or env vars.

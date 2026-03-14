@@ -32,7 +32,7 @@ pub struct VideoMetadata {
 }
 
 fn default_visibility() -> String {
-    "private".to_string()
+    "public".to_string()
 }
 
 /// Map draft visibility string to YouTube privacy status.
@@ -173,10 +173,17 @@ pub fn upload_video_at(
         match resp {
             Ok(r) => {
                 // Final chunk — YouTube returns 200 or 201 with video resource
-                let body: serde_json::Value = r.into_json()?;
+                let body_str = r.into_string()?;
+                if body_str.trim().is_empty() {
+                    // Some intermediate 2xx responses may have empty body — continue uploading
+                    offset += bytes_read as u64;
+                    continue;
+                }
+                let body: serde_json::Value = serde_json::from_str(&body_str)
+                    .map_err(|e| anyhow::anyhow!("Failed to parse upload response JSON: {} (body: {})", e, &body_str[..body_str.len().min(200)]))?;
                 let video_id = body["id"]
                     .as_str()
-                    .ok_or_else(|| anyhow::anyhow!("Missing video 'id' in upload response"))?
+                    .ok_or_else(|| anyhow::anyhow!("Missing video 'id' in upload response: {}", &body_str[..body_str.len().min(200)]))?
                     .to_string();
                 return Ok(video_id);
             }
@@ -193,6 +200,59 @@ pub fn upload_video_at(
     }
 
     bail!("Video upload completed without receiving a video ID from YouTube")
+}
+
+/// Update a published video's metadata (title, description, tags, visibility).
+///
+/// Uses the YouTube Data API v3 videos.update endpoint.
+pub fn update_video(
+    access_token: &str,
+    video_id: &str,
+    metadata: &VideoMetadata,
+) -> Result<()> {
+    update_video_at(API_BASE, access_token, video_id, metadata)
+}
+
+/// Update a video with configurable API base URL (for testing).
+pub fn update_video_at(
+    api_base: &str,
+    access_token: &str,
+    video_id: &str,
+    metadata: &VideoMetadata,
+) -> Result<()> {
+    let privacy_status = map_visibility(&metadata.visibility)?;
+
+    let body = serde_json::json!({
+        "id": video_id,
+        "snippet": {
+            "title": metadata.title,
+            "description": metadata.description,
+            "tags": metadata.tags,
+            "categoryId": if metadata.category_id.is_empty() { "22" } else { &metadata.category_id }
+        },
+        "status": {
+            "privacyStatus": privacy_status
+        }
+    });
+
+    let url = format!(
+        "{}/youtube/v3/videos?part=snippet,status",
+        api_base
+    );
+
+    let resp = ureq::put(&url)
+        .set("Authorization", &format!("Bearer {}", access_token))
+        .set("Content-Type", "application/json")
+        .send_json(&body);
+
+    match resp {
+        Ok(_) => Ok(()),
+        Err(ureq::Error::Status(status, resp)) => {
+            let err_body = resp.into_string().unwrap_or_default();
+            bail!("YouTube video update failed (HTTP {}): {}", status, err_body);
+        }
+        Err(e) => bail!("YouTube video update request failed: {}", e),
+    }
 }
 
 /// Upload captions (subtitles) for a video.

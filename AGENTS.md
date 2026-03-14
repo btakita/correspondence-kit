@@ -129,6 +129,16 @@ Follow a research → plan → implement cycle. Never write code until the plan 
    during this phase.
 5. **Precommit** — Run `make precommit` and `corky audit-docs` before committing.
 
+## Review Pipeline
+
+Three-step quality gate before committing. Run in order — later steps assume earlier ones pass.
+
+1. **`make check`** — clippy + tests. Catches compilation errors, lint violations, and regressions.
+2. **`corky audit-docs`** — instruction file and SPEC.md consistency. Ensures docs match code.
+3. **`/simplify`** — Claude Code built-in. Reviews changed files for reuse, quality, and efficiency.
+
+Steps 1–2 are automated (CI-runnable). Step 3 requires Claude Code. Skip gracefully if a tool is unavailable.
+
 ## PR Process
 
 - Feature work happens on a branch with a PR.

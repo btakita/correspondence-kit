@@ -548,7 +548,7 @@ pub enum YoutubeCommands {
         author: Option<String>,
 
         /// Video visibility (public, unlisted, private)
-        #[arg(long, default_value = "private")]
+        #[arg(long, default_value = "public")]
         visibility: String,
 
         /// Comma-separated tags
@@ -563,6 +563,12 @@ pub enum YoutubeCommands {
         /// Validate and show payload without actually publishing
         #[arg(long)]
         dry_run: bool,
+    },
+
+    /// Edit a published YouTube video's metadata
+    Edit {
+        /// Path to the draft file (must have post_id in frontmatter)
+        file: PathBuf,
     },
 
     /// Validate profiles in .corky.toml

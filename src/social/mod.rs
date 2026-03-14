@@ -97,6 +97,57 @@ pub fn run_publish(file: &Path, dry_run: bool) -> Result<()> {
     publish::publish(file, dry_run)
 }
 
+/// Run the `youtube edit` command: update a published YouTube video's metadata.
+pub fn run_youtube_edit(file: &Path) -> Result<()> {
+    let content = std::fs::read_to_string(file)?;
+    let draft = SocialDraft::parse(&content)?;
+
+    if draft.meta.platform != platform::Platform::Youtube {
+        bail!("Draft is not a YouTube draft (platform: {})", draft.meta.platform);
+    }
+
+    let video_id = draft.meta.post_id.clone().ok_or_else(|| {
+        anyhow::anyhow!("Video has not been published yet — no post_id in frontmatter.")
+    })?;
+
+    let profiles = ProfilesFile::load()?;
+    let author = &draft.meta.author;
+    let urn = profiles.resolve_urn(author, platform::Platform::Youtube)?;
+
+    let store = token_store::TokenStore::load()?;
+    let token = store.get_valid(&urn).ok_or_else(|| {
+        anyhow::anyhow!(
+            "No valid token for {} ({}).\nRun `corky youtube auth` to authenticate.",
+            author,
+            urn,
+        )
+    })?;
+
+    let title = draft.meta.title.clone().unwrap_or_else(|| {
+        draft.body.lines().next().unwrap_or("").to_string()
+    });
+    let description = if draft.meta.title.is_some() {
+        draft.body.clone()
+    } else {
+        let mut lines = draft.body.lines();
+        lines.next();
+        lines.collect::<Vec<_>>().join("\n").trim().to_string()
+    };
+
+    let metadata = youtube::VideoMetadata {
+        title,
+        description,
+        tags: draft.meta.tags.clone(),
+        visibility: draft.meta.visibility.clone(),
+        category_id: String::new(),
+    };
+
+    youtube::update_video(&token.access_token, &video_id, &metadata)?;
+
+    println!("Updated YouTube video: https://www.youtube.com/watch?v={}", video_id);
+    Ok(())
+}
+
 /// Run the `social edit` command: update a published post's commentary.
 pub fn run_edit(file: &Path, body: Option<&str>) -> Result<()> {
     let content = std::fs::read_to_string(file)?;

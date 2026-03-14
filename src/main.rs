@@ -189,6 +189,7 @@ fn main() -> Result<()> {
                 &tags,
             ),
             YoutubeCommands::Publish { file, dry_run } => corky::social::run_publish(&file, dry_run),
+            YoutubeCommands::Edit { file } => corky::social::run_youtube_edit(&file),
             YoutubeCommands::Check => corky::social::run_check(),
             YoutubeCommands::List { status } => corky::social::run_list(status.as_deref()),
         },
